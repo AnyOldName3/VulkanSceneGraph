@@ -254,7 +254,7 @@ set(SOURCES
     utils/Profiler.cpp
 )
 
-if (${VSG_SUPPORTS_ShaderCompiler})
+if (${VSG_SUPPORTS_ShaderCompiler} AND NOT ${VSG_USE_SYSTEM_GLSLANG})
 
     # include glslang source code directly into the VulkanScenegraph library build.
     include(../glslang/build_vars.cmake)
@@ -265,6 +265,10 @@ set(LIBRARIES PUBLIC
         Vulkan::Vulkan
         Threads::Threads
 )
+
+if (${VSG_SUPPORTS_ShaderCompiler} AND ${VSG_USE_SYSTEM_GLSLANG})
+    list(APPEND LIBRARIES glslang::glslang glslang::SPIRV)
+endif()
 
 # Check for std::atomic
 if(NOT MSVC AND NOT ANDROID AND NOT APPLE)
@@ -402,10 +406,15 @@ target_include_directories(vsg
     PUBLIC
         $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${VSG_BINARY_DIR}/include>
-    PRIVATE
-        $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/src/glslang>
-        $<BUILD_INTERFACE:${GLSLANG_GENERATED_INCLUDEDIR}>
 )
+if(NOT VSG_USE_SYSTEM_GLSLANG)
+    target_include_directories(vsg
+        PRIVATE
+            $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/src/glslang>
+            $<BUILD_INTERFACE:${GLSLANG_GENERATED_INCLUDEDIR}>
+            $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/src>
+    )
+endif()
 
 target_link_libraries(vsg ${LIBRARIES})
 
