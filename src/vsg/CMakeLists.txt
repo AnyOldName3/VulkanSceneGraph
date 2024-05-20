@@ -254,19 +254,13 @@ set(SOURCES
     utils/Profiler.cpp
 )
 
-if (${VSG_SUPPORTS_ShaderCompiler} AND NOT ${VSG_USE_SYSTEM_GLSLANG})
-
-    # include glslang source code directly into the VulkanScenegraph library build.
-    include(../glslang/build_vars.cmake)
-endif()
-
 # set up library dependencies
 set(LIBRARIES PUBLIC
         Vulkan::Vulkan
         Threads::Threads
 )
 
-if (${VSG_SUPPORTS_ShaderCompiler} AND ${VSG_USE_SYSTEM_GLSLANG})
+if (${VSG_SUPPORTS_ShaderCompiler})
     list(APPEND LIBRARIES glslang::glslang glslang::SPIRV)
 endif()
 
@@ -407,14 +401,6 @@ target_include_directories(vsg
         $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${VSG_BINARY_DIR}/include>
 )
-if(NOT VSG_USE_SYSTEM_GLSLANG)
-    target_include_directories(vsg
-        PRIVATE
-            $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/src/glslang>
-            $<BUILD_INTERFACE:${GLSLANG_GENERATED_INCLUDEDIR}>
-            $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/src>
-    )
-endif()
 
 target_link_libraries(vsg ${LIBRARIES})
 

@@ -43,32 +43,16 @@ set(VSG_MAX_INSTRUMENTATION_LEVEL 1 CACHE STRING "Set the instrumentation level 
 # Enable/disable shader compilation support that pulls in glslang
 set(VSG_SUPPORTS_ShaderCompiler  1 CACHE STRING "Optional shader compiler support, 0 for off, 1 for enabled." )
 if (VSG_SUPPORTS_ShaderCompiler)
-    option(VSG_USE_SYSTEM_GLSLANG "Use system-installed glslang" ON)
-    if (VSG_USE_SYSTEM_GLSLANG)
-        set(VSG_REQUIRED_GLSLANG_VERSION "14" CACHE STRING "glslang 14 is the earliest version that we think installs itself properly on all platforms. Other platforms may be able to use an earlier version")
-        find_package(glslang ${VSG_REQUIRED_GLSLANG_VERSION} CONFIG REQUIRED)
-    else()
-        if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/glslang/build_vars.cmake)
-
-            if (Git_FOUND)
-
-                set(glslang_URL "https://github.com/vsg-dev/glslang.git" CACHE STRING "URL of the glslang git repository")
-                set(glslang_branch "VSG-1.0.x" CACHE STRING "branch/tag of the glslang git repository")
-
-                execute_process(COMMAND ${GIT_EXECUTABLE} clone --depth 1 --branch ${glslang_branch} ${glslang_URL}
-                                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src
-                                RESULT_VARIABLE GIT_SUBMOD_RESULT)
-
-                if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-                    message(WARNING "git clone of glslang failed. ShaderCompile support disabled.")
-                    set(VSG_SUPPORTS_ShaderCompiler 0)
-                endif()
-            else()
-                    message(WARNING "git clone of glslang failed. ShaderCompile support disabled.")
-                    set(VSG_SUPPORTS_ShaderCompiler 0)
-            endif()
-        endif()
-    endif()
+    set(VSG_REQUIRED_GLSLANG_VERSION "14" CACHE STRING "glslang 14 is the earliest version that we think installs itself properly on all platforms. Other platforms may be able to use an earlier version")
+    # For Windows and MacOS, the Vulkan SDK provides glslang, but CMake doesn't necessarily look there for anything except Vulkan.
+    # As of 1.3.283, some files are still missing, so it doesn't work yet, but it's been reported, so hopefully they eventually make this work.
+    #foreach(vulkan_lib ${Vulkan_LIBRARIES})
+    #    get_filename_component(vulkan_lib_dir "${vulkan_lib}" DIRECTORY)
+    #    list(APPEND CMAKE_PREFIX_PATH ${vulkan_lib_dir})
+    #    get_filename_component(vulkan_lib_dir "${vulkan_lib_dir}" DIRECTORY)
+    #    list(APPEND CMAKE_PREFIX_PATH ${vulkan_lib_dir})
+    #endforeach(vulkan_lib ${Vulkan_LIBRARIES})
+    find_package(glslang ${VSG_REQUIRED_GLSLANG_VERSION} CONFIG REQUIRED)
 endif()
 
 set(VSG_SUPPORTS_Windowing  1 CACHE STRING "Optional native windowing support providing a default implementation of vsg::Window::create(), 0 for off, 1 for enabled." )

@@ -2,6 +2,18 @@ include(CMakeFindDependencyMacro)
 
 find_package(Vulkan @Vulkan_MIN_VERSION@ REQUIRED)
 find_dependency(Threads)
+set(VSG_SUPPORTS_ShaderCompiler @VSG_SUPPORTS_ShaderCompiler@)
+if (VSG_SUPPORTS_ShaderCompiler)
+    # For Windows and MacOS, the Vulkan SDK provides glslang, but CMake doesn't necessarily look there for anything except Vulkan.
+    # As of 1.3.283, some files are still missing, so it doesn't work yet, but it's been reported, so hopefully they eventually make this work.
+    #foreach(vulkan_lib ${Vulkan_LIBRARIES})
+    #    get_filename_component(vulkan_lib_dir "${vulkan_lib}" DIRECTORY)
+    #    list(APPEND CMAKE_PREFIX_PATH ${vulkan_lib_dir})
+    #    get_filename_component(vulkan_lib_dir "${vulkan_lib_dir}" DIRECTORY)
+    #    list(APPEND CMAKE_PREFIX_PATH ${vulkan_lib_dir})
+    #endforeach(vulkan_lib ${Vulkan_LIBRARIES})
+    find_dependency(glslang @VSG_REQUIRED_GLSLANG_VERSION@ CONFIG REQUIRED)
+endif()
 
 @FIND_DEPENDENCY_WINDOWING@
 include("${CMAKE_CURRENT_LIST_DIR}/vsgTargets.cmake")
