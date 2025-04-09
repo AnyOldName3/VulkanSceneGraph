@@ -304,6 +304,9 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation, ref_ptr<c
 
         auto config = vsg::GraphicsPipelineConfigurator::create(shaderSet);
 
+        if (options)
+            config->assignInheritedState(options->inheritedState);
+
         auto& sharedObjects = text->font->sharedObjects;
         if (!sharedObjects) sharedObjects = SharedObjects::create();
 

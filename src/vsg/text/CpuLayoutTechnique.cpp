@@ -121,7 +121,7 @@ void CpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation, ref_ptr<c
     quads.reserve(num_quads);
     layout->layout(text->text, *font, quads);
 
-    scenegraph = createRenderingSubgraph(shaderSet, font, layout->requiresBillboard(), quads, minimumAllocation);
+    scenegraph = createRenderingSubgraph(shaderSet, font, layout->requiresBillboard(), quads, minimumAllocation, options);
 }
 
 void CpuLayoutTechnique::setup(TextGroup* textGroup, uint32_t minimumAllocation, ref_ptr<const Options> options)
@@ -153,10 +153,10 @@ void CpuLayoutTechnique::setup(TextGroup* textGroup, uint32_t minimumAllocation,
         if (text->text && text->layout) text->layout->layout(text->text, *font, quads);
     }
 
-    scenegraph = createRenderingSubgraph(shaderSet, font, requiresBillboard, quads, minimumAllocation);
+    scenegraph = createRenderingSubgraph(shaderSet, font, requiresBillboard, quads, minimumAllocation, options);
 }
 
-ref_ptr<Node> CpuLayoutTechnique::createRenderingSubgraph(ref_ptr<ShaderSet> shaderSet, ref_ptr<Font> font, bool billboard, TextQuads& quads, uint32_t minimumAllocation)
+ref_ptr<Node> CpuLayoutTechnique::createRenderingSubgraph(ref_ptr<ShaderSet> shaderSet, ref_ptr<Font> font, bool billboard, TextQuads& quads, uint32_t minimumAllocation, ref_ptr<const Options> options)
 {
     if (quads.empty()) return {};
 
@@ -308,6 +308,9 @@ ref_ptr<Node> CpuLayoutTechnique::createRenderingSubgraph(ref_ptr<ShaderSet> sha
         stategroup = StateGroup::create();
 
         auto config = vsg::GraphicsPipelineConfigurator::create(shaderSet);
+
+        if (options)
+            config->assignInheritedState(options->inheritedState);
 
         auto& sharedObjects = font->sharedObjects;
         if (!sharedObjects) sharedObjects = SharedObjects::create();
