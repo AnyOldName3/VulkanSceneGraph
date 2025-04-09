@@ -108,6 +108,7 @@ set(SOURCES
     state/PipelineLayout.cpp
     state/Sampler.cpp
     state/ResourceHints.cpp
+    state/NoOpStateCommand.cpp
     state/StateCommand.cpp
     state/StateSwitch.cpp
     state/Image.cpp

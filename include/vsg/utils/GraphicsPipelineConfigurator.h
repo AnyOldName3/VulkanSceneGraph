@@ -149,6 +149,7 @@ namespace vsg
 
         // setup by init()
         std::set<uint32_t> inheritedSets;
+        std::set<uint32_t> incompatibleSlots;
         ref_ptr<PipelineLayout> layout;
         ref_ptr<GraphicsPipeline> graphicsPipeline;
         ref_ptr<BindGraphicsPipeline> bindGraphicsPipeline;

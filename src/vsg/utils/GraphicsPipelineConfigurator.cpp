@@ -13,6 +13,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/app/View.h>
 #include <vsg/io/Logger.h>
 #include <vsg/nodes/StateGroup.h>
+#include <vsg/state/NoOpStateCommand.h>
 #include <vsg/state/ViewDependentState.h>
 #include <vsg/utils/GraphicsPipelineConfigurator.h>
 #include <vsg/utils/SharedObjects.h>
@@ -537,6 +538,7 @@ void GraphicsPipelineConfigurator::assignInheritedState(const StateCommands& sta
 void GraphicsPipelineConfigurator::_assignInheritedSets()
 {
     inheritedSets.clear();
+    incompatibleSlots.clear();
 
     struct FindInheritedState : public ConstVisitor
     {
@@ -558,6 +560,10 @@ void GraphicsPipelineConfigurator::_assignInheritedSets()
             {
                 gpc.inheritedSets.insert(bds.firstSet);
             }
+            else
+            {
+                gpc.incompatibleSlots.insert(bds.slot);
+            }
         }
 
         void apply(const BindDescriptorSets& bds) override
@@ -571,12 +577,17 @@ void GraphicsPipelineConfigurator::_assignInheritedSets()
                     gpc.inheritedSets.insert(bds.firstSet + static_cast<uint32_t>(i));
                 }
             }
+            else
+            {
+                gpc.incompatibleSlots.insert(bds.slot);
+            }
         }
 
         void apply(const BindViewDescriptorSets& bvds) override
         {
             if (!gpc.shaderSet->partiallyCompatiblePipelineLayout(*bvds.layout, gpc.shaderHints->defines, false, bvds.firstSet))
             {
+                gpc.incompatibleSlots.insert(bvds.slot);
                 return;
             }
 
@@ -690,6 +701,22 @@ bool GraphicsPipelineConfigurator::copyTo(StateCommands& stateCommands, ref_ptr<
             }
             stateCommands.push_back(sc);
             stateAssigned = true;
+        }
+    }
+
+    if (!incompatibleSlots.empty())
+    {
+        std::set<uint32_t> seenSets;
+        for (const auto& command : stateCommands)
+        {
+            seenSets.insert(command->slot);
+        }
+        for (uint32_t slot : incompatibleSlots)
+        {
+            if (seenSets.count(slot) == 0)
+            {
+                stateCommands.push_back(NoOpStateCommand::create(slot));
+            }
         }
     }
 

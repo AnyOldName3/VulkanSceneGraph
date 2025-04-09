@@ -162,6 +162,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/state/ImageView.h>
 #include <vsg/state/InputAssemblyState.h>
 #include <vsg/state/MultisampleState.h>
+#include <vsg/state/NoOpStateCommand.h>
 #include <vsg/state/PipelineLayout.h>
 #include <vsg/state/PushConstants.h>
 #include <vsg/state/QueryPool.h>
