@@ -45,7 +45,7 @@ PipelineLayout::~PipelineLayout()
 {
 }
 
-std::pair<bool, uint32_t> vsg::PipelineLayout::computeCompatibility(const PipelineLayout& other)
+std::pair<bool, uint32_t> vsg::PipelineLayout::computeCompatibility(const PipelineLayout& other) const
 {
     auto result = std::make_pair<bool, uint32_t>(compare_value_container(pushConstantRanges, other.pushConstantRanges) == 0, 0);
     if (!result.first)

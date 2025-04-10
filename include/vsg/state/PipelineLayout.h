@@ -44,7 +44,7 @@ namespace vsg
         void release() { _implementation.clear(); }
 
         // returns whether the layouts are push-constant-compatible and the lowest N for which the layouts are not compatible for descriptor set N
-        std::pair<bool, uint32_t> computeCompatibility(const PipelineLayout& other);
+        std::pair<bool, uint32_t> computeCompatibility(const PipelineLayout& other) const;
 
     public:
         ref_ptr<Object> clone(const CopyOp& copyop = {}) const override { return PipelineLayout::create(*this, copyop); }
