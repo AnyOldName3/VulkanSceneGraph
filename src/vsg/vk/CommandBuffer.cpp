@@ -59,11 +59,21 @@ void CommandBuffer::setCurrentPipelineLayout(const PipelineLayout* pipelineLayou
         state->dirtyStateStacks();
 
         _currentPipelineLayout = newLayout;
+        _currentVSGPipelineLayout = pipelineLayout;
         if (pipelineLayout->pushConstantRanges.empty())
             _currentPushConstantStageFlags = 0;
         else
             _currentPushConstantStageFlags = pipelineLayout->pushConstantRanges.front().stageFlags;
     }
+}
+
+std::pair<bool, uint32_t> vsg::CommandBuffer::getPipelineLayoutCompatibility(const PipelineLayout& other)
+{
+    if (other.vk(deviceID) == _currentPipelineLayout)
+    {
+        return std::make_pair(true, std::numeric_limits<uint32_t>::max());
+    }
+    return _currentVSGPipelineLayout->computeCompatibility(other);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

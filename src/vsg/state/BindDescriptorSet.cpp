@@ -113,10 +113,14 @@ void BindDescriptorSets::compile(Context& context)
 void BindDescriptorSets::record(CommandBuffer& commandBuffer) const
 {
     //info("BindDescriptorSets::record() ", dynamicOffsets.size(), ", ", dynamicOffsets.data());
-    auto& vkd = _vulkanData[commandBuffer.deviceID];
-    vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, vkd._vkPipelineLayout, firstSet,
-                            static_cast<uint32_t>(vkd._vkDescriptorSets.size()), vkd._vkDescriptorSets.data(),
-                            static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
+    auto [pc, set] = commandBuffer.getPipelineLayoutCompatibility(*layout);
+    if (pc && set > firstSet + static_cast<uint32_t>(descriptorSets.size()))
+    {
+        auto& vkd = _vulkanData[commandBuffer.deviceID];
+        vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, vkd._vkPipelineLayout, firstSet,
+                                static_cast<uint32_t>(vkd._vkDescriptorSets.size()), vkd._vkDescriptorSets.data(),
+                                static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -209,8 +213,12 @@ void BindDescriptorSet::compile(Context& context)
 void BindDescriptorSet::record(CommandBuffer& commandBuffer) const
 {
     //info("BindDescriptorSet::record() ", dynamicOffsets.size(), ", ", dynamicOffsets.data());
-    auto& vkd = _vulkanData[commandBuffer.deviceID];
-    vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, vkd._vkPipelineLayout, firstSet,
-                            1, &(vkd._vkDescriptorSet),
-                            static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
+    auto [pc, set] = commandBuffer.getPipelineLayoutCompatibility(*layout);
+    if (pc && set > firstSet)
+    {
+        auto& vkd = _vulkanData[commandBuffer.deviceID];
+        vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, vkd._vkPipelineLayout, firstSet,
+                                1, &(vkd._vkDescriptorSet),
+                                static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
+    }
 }

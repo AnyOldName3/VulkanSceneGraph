@@ -58,6 +58,8 @@ namespace vsg
         VkPipelineLayout getCurrentPipelineLayout() const { return _currentPipelineLayout; }
         VkShaderStageFlags getCurrentPushConstantStageFlags() const { return _currentPushConstantStageFlags; }
 
+        std::pair<bool, uint32_t> getPipelineLayoutCompatibility(const PipelineLayout& other);
+
         ref_ptr<ScratchMemory> scratchMemory;
 
     protected:
@@ -73,6 +75,7 @@ namespace vsg
         ref_ptr<Device> _device;
         ref_ptr<CommandPool> _commandPool;
         VkPipelineLayout _currentPipelineLayout;
+        ref_ptr<const PipelineLayout> _currentVSGPipelineLayout;
         VkShaderStageFlags _currentPushConstantStageFlags;
     };
     VSG_type_name(vsg::CommandBuffer);
