@@ -30,6 +30,7 @@ CommandBuffer::CommandBuffer(CommandPool* commandPool, VkCommandBuffer commandBu
     _device(commandPool->getDevice()),
     _commandPool(commandPool),
     _currentPipelineLayout(VK_NULL_HANDLE),
+    _currentVSGPipelineLayout(nullptr),
     _currentPushConstantStageFlags(0)
 {
 }
@@ -45,6 +46,7 @@ CommandBuffer::~CommandBuffer()
 void CommandBuffer::reset()
 {
     _currentPipelineLayout = VK_NULL_HANDLE;
+    _currentVSGPipelineLayout = nullptr;
     _currentPushConstantStageFlags = 0;
 
     _commandPool->reset();

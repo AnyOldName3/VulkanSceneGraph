@@ -75,7 +75,7 @@ namespace vsg
         ref_ptr<Device> _device;
         ref_ptr<CommandPool> _commandPool;
         VkPipelineLayout _currentPipelineLayout;
-        ref_ptr<const PipelineLayout> _currentVSGPipelineLayout;
+        const PipelineLayout* _currentVSGPipelineLayout;
         VkShaderStageFlags _currentPushConstantStageFlags;
     };
     VSG_type_name(vsg::CommandBuffer);
