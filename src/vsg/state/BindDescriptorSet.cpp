@@ -113,7 +113,7 @@ void BindDescriptorSets::compile(Context& context)
 void BindDescriptorSets::record(CommandBuffer& commandBuffer) const
 {
     //info("BindDescriptorSets::record() ", dynamicOffsets.size(), ", ", dynamicOffsets.data());
-    auto [pc, set] = commandBuffer.getPipelineLayoutCompatibility(*layout);
+    const auto& [pc, set] = commandBuffer.getPipelineLayoutCompatibility(*layout);
     if (pc && set > firstSet + static_cast<uint32_t>(descriptorSets.size()))
     {
         auto& vkd = _vulkanData[commandBuffer.deviceID];
@@ -213,7 +213,7 @@ void BindDescriptorSet::compile(Context& context)
 void BindDescriptorSet::record(CommandBuffer& commandBuffer) const
 {
     //info("BindDescriptorSet::record() ", dynamicOffsets.size(), ", ", dynamicOffsets.data());
-    auto [pc, set] = commandBuffer.getPipelineLayoutCompatibility(*layout);
+    const auto& [pc, set] = commandBuffer.getPipelineLayoutCompatibility(*layout);
     if (pc && set > firstSet)
     {
         auto& vkd = _vulkanData[commandBuffer.deviceID];

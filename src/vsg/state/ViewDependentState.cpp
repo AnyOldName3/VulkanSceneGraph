@@ -153,7 +153,7 @@ void BindViewDescriptorSets::record(CommandBuffer& commandBuffer) const
 {
     if (commandBuffer.viewDependentState)
     {
-        auto [pc, set] = commandBuffer.getPipelineLayoutCompatibility(*layout);
+        const auto& [pc, set] = commandBuffer.getPipelineLayoutCompatibility(*layout);
         if (pc && set > firstSet)
         {
             commandBuffer.viewDependentState->bindDescriptorSets(commandBuffer, pipelineBindPoint, layout->vk(commandBuffer.deviceID), firstSet);
