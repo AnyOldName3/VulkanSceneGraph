@@ -61,6 +61,7 @@ namespace vsg
         std::pair<bool, uint32_t> getPipelineLayoutCompatibility(const PipelineLayout& other);
 
         ref_ptr<ScratchMemory> scratchMemory;
+        std::map<std::pair<VkPipelineLayout, VkPipelineLayout>, std::pair<bool, uint32_t>> layoutCompatibilityCache;
 
     protected:
         friend CommandPool;

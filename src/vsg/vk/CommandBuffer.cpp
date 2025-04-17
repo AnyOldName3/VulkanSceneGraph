@@ -75,7 +75,13 @@ std::pair<bool, uint32_t> vsg::CommandBuffer::getPipelineLayoutCompatibility(con
     {
         return std::make_pair(true, std::numeric_limits<uint32_t>::max());
     }
-    return _currentVSGPipelineLayout->computeCompatibility(other);
+    auto itr = layoutCompatibilityCache.find(std::make_pair(_currentPipelineLayout, other.vk(deviceID)));
+    if (itr != layoutCompatibilityCache.end())
+        return itr->second;
+    auto compatibility = _currentVSGPipelineLayout->computeCompatibility(other);
+    layoutCompatibilityCache[std::make_pair(_currentPipelineLayout, other.vk(deviceID))] = compatibility;
+    layoutCompatibilityCache[std::make_pair(other.vk(deviceID), _currentPipelineLayout)] = compatibility;
+    return compatibility;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
