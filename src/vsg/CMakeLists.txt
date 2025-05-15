@@ -334,7 +334,10 @@ if (VSG_SUPPORTS_Windowing)
     endif()
 endif()
 
-add_library(vsg ${HEADERS} ${SOURCES})
+add_library(vsg ${SOURCES} ${HEADERS})
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.23)
+    target_sources(vsg PUBLIC FILE_SET HEADERS BASE_DIRS ${VSG_SOURCE_DIR}/include ${VSG_BINARY_DIR}/include FILES ${HEADERS})
+endif()
 
 # add definitions to enable building VulkanSceneGraph as part of submodule
 add_library(vsg::vsg ALIAS vsg)
@@ -405,17 +408,21 @@ ASSIGN_SOURCE_GROUPS("Header Files" "${VSG_SOURCE_DIR}/include/vsg" ${HEADERS})
 set_property(TARGET vsg PROPERTY VERSION ${VSG_VERSION_MAJOR}.${VSG_VERSION_MINOR}.${VSG_VERSION_PATCH})
 set_property(TARGET vsg PROPERTY SOVERSION ${VSG_SOVERSION})
 set_property(TARGET vsg PROPERTY POSITION_INDEPENDENT_CODE ON)
-set_property(TARGET vsg PROPERTY CXX_STANDARD 17)
+target_compile_features(vsg PUBLIC cxx_std_17)
 if(WIN32)
     set_property(TARGET vsg PROPERTY RUNTIME_OUTPUT_NAME vsg-${VSG_SOVERSION})
 endif()
 
 target_compile_definitions(vsg PRIVATE ${EXTRA_DEFINES})
+
+# remove when CMake 3.23+ is the minimum
 target_include_directories(vsg
     PUBLIC
         $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${VSG_BINARY_DIR}/include>
 )
+
+set_target_properties(vsg PROPERTIES VERIFY_INTERFACE_HEADER_SETS ON)
 
 target_link_libraries(vsg ${LIBRARIES})
 
@@ -423,6 +430,7 @@ if (BUILD_SHARED_LIBS)
     target_compile_definitions(vsg INTERFACE VSG_SHARED_LIBRARY)
 endif()
 
+# remove when CMake 3.23+ is the minimum
 # install headers
 install(DIRECTORY ${VSG_SOURCE_DIR}/include/vsg DESTINATION include)
 
@@ -431,7 +439,11 @@ if (NOT(${VSG_BINARY_DIR} STREQUAL ${VSG_SOURCE_DIR}))
 endif()
 
 # install lib
-install(TARGETS vsg ${VSG_INSTALL_TARGETS_DEFAULT_FLAGS})
+if (CMAKE_VERSION VERSION_LESS 3.23)
+    install(TARGETS vsg ${VSG_INSTALL_TARGETS_DEFAULT_FLAGS})
+else()
+    install(TARGETS vsg ${VSG_INSTALL_TARGETS_DEFAULT_FLAGS} FILE_SET HEADERS)
+endif()
 
 # install cmake config files.
 install(
