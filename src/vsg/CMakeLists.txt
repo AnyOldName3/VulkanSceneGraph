@@ -417,7 +417,7 @@ target_include_directories(vsg
         $<BUILD_INTERFACE:${VSG_BINARY_DIR}/include>
 )
 
-vsg_add_target_self_sufficient_header_check(TARGET vsg BASE_DIRS ${VSG_SOURCE_DIR}/include ${VSG_BINARY_DIR}/include)
+vsg_add_target_self_sufficient_header_check(TARGET vsg BASE_DIRS ${VSG_SOURCE_DIR}/include ${VSG_BINARY_DIR}/include EXCLUDED_HEADERS "vsg/utils/TracyInstrumentation.h")
 
 target_link_libraries(vsg ${LIBRARIES})
 
