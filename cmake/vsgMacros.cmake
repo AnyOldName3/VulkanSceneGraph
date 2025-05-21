@@ -411,6 +411,48 @@ macro(vsg_add_target_uninstall)
     add_dependencies(uninstall uninstall-${PROJECT_NAME})
 endmacro()
 
+# pure CMake implementation of VERIFY_INTERFACE_HEADER_SETS
+# when CMake 3.24 or later becomes the mandatory, this should be scrapped, and the target property should be set instead.
+set(vsg_macro_dir "${CMAKE_CURRENT_LIST_DIR}")
+macro(vsg_add_target_self_sufficient_header_check)
+    set(options)
+    set(oneValueArgs TARGET)
+    set(multiValueArgs BASE_DIRS)
+    cmake_parse_arguments(ARGS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if (NOT TARGET all_verify_interface_header_sets)
+        add_custom_target(all_verify_interface_header_sets)
+        set_target_properties(all_verify_interface_header_sets PROPERTIES  EXCLUDE_FROM_DEFAULT_BUILD TRUE)
+    endif()
+
+    set(generated_target "${ARGS_TARGET}_verify_interface_header_sets")
+
+    get_target_property(target_sources ${ARGS_TARGET} SOURCES)
+    list(FILTER target_sources INCLUDE REGEX ".*\\.h(pp)?$")
+    set(header_check_base_dir "${CMAKE_CURRENT_BINARY_DIR}/${generated_target}")
+    file(MAKE_DIRECTORY "${header_check_base_dir}")
+    set(header_check_sources)
+    foreach (target_header ${target_sources})
+        set(relative_path)
+        set(shortest inf)
+        foreach (base_dir ${ARGS_BASE_DIRS})
+            file(RELATIVE_PATH potential_relative_path "${base_dir}" "${target_header}")
+            string(LENGTH "${potential_relative_path}" length)
+            if (length LESS shortest)
+                set(relative_path "${potential_relative_path}")
+                set(shortest ${length})
+            endif()
+        endforeach ()
+        configure_file("${vsg_macro_dir}/self_sufficient_header_template.in" "${header_check_base_dir}/${relative_path}.cxx")
+        list(APPEND header_check_sources "${header_check_base_dir}/${relative_path}.cxx")
+    endforeach()
+
+    # native CMake feature uses OBJECT instead of STATIC, but that requires CMake 3.12
+    add_library("${generated_target}" STATIC EXCLUDE_FROM_ALL ${header_check_sources})
+    target_link_libraries("${generated_target}" PUBLIC "${ARGS_TARGET}")
+    add_dependencies(all_verify_interface_header_sets "${generated_target}")
+endmacro()
+
 #
 # check minimum header version of Vulkan
 #

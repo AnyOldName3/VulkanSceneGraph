@@ -405,7 +405,7 @@ ASSIGN_SOURCE_GROUPS("Header Files" "${VSG_SOURCE_DIR}/include/vsg" ${HEADERS})
 set_property(TARGET vsg PROPERTY VERSION ${VSG_VERSION_MAJOR}.${VSG_VERSION_MINOR}.${VSG_VERSION_PATCH})
 set_property(TARGET vsg PROPERTY SOVERSION ${VSG_SOVERSION})
 set_property(TARGET vsg PROPERTY POSITION_INDEPENDENT_CODE ON)
-set_property(TARGET vsg PROPERTY CXX_STANDARD 17)
+target_compile_features(vsg PUBLIC cxx_std_17)
 if(WIN32)
     set_property(TARGET vsg PROPERTY RUNTIME_OUTPUT_NAME vsg-${VSG_SOVERSION})
 endif()
@@ -416,6 +416,8 @@ target_include_directories(vsg
         $<BUILD_INTERFACE:${VSG_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${VSG_BINARY_DIR}/include>
 )
+
+vsg_add_target_self_sufficient_header_check(TARGET vsg BASE_DIRS ${VSG_SOURCE_DIR}/include ${VSG_BINARY_DIR}/include)
 
 target_link_libraries(vsg ${LIBRARIES})
 
