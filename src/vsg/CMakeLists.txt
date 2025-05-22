@@ -336,7 +336,12 @@ endif()
 
 add_library(vsg ${SOURCES} ${HEADERS})
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.23)
-    target_sources(vsg PUBLIC FILE_SET HEADERS BASE_DIRS ${VSG_SOURCE_DIR}/include ${VSG_BINARY_DIR}/include FILES ${HEADERS})
+    list(REMOVE_ITEM HEADERS "${VSG_SOURCE_DIR}/include/vsg/utils/TracyInstrumentation.h")
+    target_sources(vsg
+        PUBLIC FILE_SET HEADERS BASE_DIRS ${VSG_SOURCE_DIR}/include ${VSG_BINARY_DIR}/include FILES ${HEADERS}
+        # don't check these are self-sufficient
+        INTERFACE FILE_SET interface_only_headers TYPE HEADERS BASE_DIRS ${VSG_SOURCE_DIR}/include FILES "${VSG_SOURCE_DIR}/include/vsg/utils/TracyInstrumentation.h"
+    )
 endif()
 
 # add definitions to enable building VulkanSceneGraph as part of submodule
@@ -423,6 +428,7 @@ target_include_directories(vsg
 )
 
 set_target_properties(vsg PROPERTIES VERIFY_INTERFACE_HEADER_SETS ON)
+set_target_properties(vsg PROPERTIES INTERFACE_HEADER_SETS_TO_VERIFY HEADERS)
 
 target_link_libraries(vsg ${LIBRARIES})
 
@@ -442,7 +448,7 @@ endif()
 if (CMAKE_VERSION VERSION_LESS 3.23)
     install(TARGETS vsg ${VSG_INSTALL_TARGETS_DEFAULT_FLAGS})
 else()
-    install(TARGETS vsg ${VSG_INSTALL_TARGETS_DEFAULT_FLAGS} FILE_SET HEADERS)
+    install(TARGETS vsg ${VSG_INSTALL_TARGETS_DEFAULT_FLAGS} FILE_SET HEADERS FILE_SET interface_only_headers)
 endif()
 
 # install cmake config files.
