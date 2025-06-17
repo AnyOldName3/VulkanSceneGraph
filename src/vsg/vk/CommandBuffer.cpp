@@ -46,7 +46,7 @@ CommandBuffer::~CommandBuffer()
 void CommandBuffer::reset(VkCommandBufferResetFlags flags)
 {
     _currentPipelineLayout = VK_NULL_HANDLE;
-    _currentDescriptorSetSlots.clear();
+    _currentDescriptorSetSlots = 0;
     _currentPushConstantStageFlags = 0;
 
     if ((_commandPool->flags & VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) != 0)
