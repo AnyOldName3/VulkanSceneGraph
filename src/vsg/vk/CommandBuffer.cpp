@@ -46,7 +46,7 @@ CommandBuffer::~CommandBuffer()
 void CommandBuffer::reset()
 {
     _currentPipelineLayout = VK_NULL_HANDLE;
-    _currentDescriptorSetSlots.clear();
+    _currentDescriptorSetSlots.reset();
     _currentPushConstantStageFlags = 0;
 
     _commandPool->reset();

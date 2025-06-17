@@ -15,6 +15,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/state/DescriptorSetLayout.h>
 #include <vsg/vk/vk_buffer.h>
 
+#include <bitset>
+
 namespace vsg
 {
     // forward declare
@@ -34,7 +36,7 @@ namespace vsg
         VkPipelineLayoutCreateFlags flags = 0;
         DescriptorSetLayouts setLayouts;
         PushConstantRanges pushConstantRanges;
-        std::vector<bool> descriptorSetSlots;
+        std::bitset<32> descriptorSetSlots;
 
         /// Vulkan VkPipelineLayout handle
         VkPipelineLayout vk(uint32_t deviceID) const { return _implementation[deviceID]->_pipelineLayout; }

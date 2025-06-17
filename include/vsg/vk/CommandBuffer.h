@@ -16,6 +16,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/state/PipelineLayout.h>
 #include <vsg/vk/CommandPool.h>
 
+#include <bitset>
+
 namespace vsg
 {
 
@@ -63,19 +65,13 @@ namespace vsg
 
         inline bool enabled(uint32_t firstSet, uint32_t numSets) const
         {
-            if (static_cast<uint32_t>(_currentDescriptorSetSlots.size()) < firstSet + numSets)
-                return false;
-            for (uint32_t slot = firstSet; slot < firstSet + numSets; ++slot)
-            {
-                if (!_currentDescriptorSetSlots[slot])
-                    return false;
-            }
-            return true;
+            decltype(_currentDescriptorSetSlots) targetSlots(((1 << numSets)-1) << firstSet);
+            return (_currentDescriptorSetSlots & targetSlots) == targetSlots;
         }
 
         inline bool enabled(uint32_t firstSet) const
         {
-            return static_cast<uint32_t>(_currentDescriptorSetSlots.size()) > firstSet && _currentDescriptorSetSlots[firstSet];
+            return _currentDescriptorSetSlots[firstSet];
         }
 
         ref_ptr<ScratchMemory> scratchMemory;
@@ -93,7 +89,7 @@ namespace vsg
         ref_ptr<Device> _device;
         ref_ptr<CommandPool> _commandPool;
         VkPipelineLayout _currentPipelineLayout;
-        std::vector<bool> _currentDescriptorSetSlots;
+        std::bitset<32> _currentDescriptorSetSlots;
         VkShaderStageFlags _currentPushConstantStageFlags;
     };
     VSG_type_name(vsg::CommandBuffer);
