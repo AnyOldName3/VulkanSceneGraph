@@ -176,8 +176,8 @@ void vsg::IntersectionProxy::rebuild(vsg::ArrayState& arrayState)
 
     using itr_t = decltype(indices)::iterator;
 
-    auto computeKDTree = [&](itr_t first, itr_t last, auto&& computeKDTree) -> std::pair<box, NodeRef> {
-        if (std::distance(first, last) < trisPerLeaf)
+    auto computeKDTree = [&](itr_t first, itr_t last, auto&& computeKDTreeRecursive) -> std::pair<box, NodeRef> {
+        if (static_cast<size_t>(std::distance(first, last)) < trisPerLeaf)
         {
             leaves.emplace_back();
             leafMetadata.emplace_back();
@@ -213,7 +213,7 @@ void vsg::IntersectionProxy::rebuild(vsg::ArrayState& arrayState)
             size_t axisIndex = range.x > range.y ? (range.x > range.z ? 0 : 2) : (range.y > range.z ? 1 : 2);
             itr_t midpoint = first + std::distance(first, last) / 2;
             std::nth_element(first, midpoint, last, [&, axisIndex](const size_t& lhs, const size_t& rhs) { return barycenters[lhs][axisIndex] < barycenters[rhs][axisIndex]; });
-            internalNodes.emplace_back(InternalNode{{computeKDTree(first, midpoint, computeKDTree), computeKDTree(midpoint, last, computeKDTree)}});
+            internalNodes.emplace_back(InternalNode{{{computeKDTreeRecursive(first, midpoint, computeKDTreeRecursive), computeKDTreeRecursive(midpoint, last, computeKDTreeRecursive)}}});
             box overallBound;
             for (const auto& [bound, ref] : internalNodes.back().children)
             {
@@ -266,10 +266,6 @@ void vsg::IntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInters
     value_type length = ::length(d);
     value_type inverseLength = length != 0.0 ? 1.0 / length : 0.0;
 
-    vec_type dInvX = d.x != 0.0 ? d / d.x : vec_type{0.0, 0.0, 0.0};
-    vec_type dInvY = d.y != 0.0 ? d / d.y : vec_type{0.0, 0.0, 0.0};
-    vec_type dInvZ = d.z != 0.0 ? d / d.z : vec_type{0.0, 0.0, 0.0};
-
     auto intersectLeaf = [&](uint32_t index) {
         for (size_t i = 0; i < trisPerLeaf; ++i)
         {
@@ -304,7 +300,7 @@ void vsg::IntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInters
         }
     };
 
-    auto intersectNode = [&](const NodeRef& nodeRef, auto&& intersectNode) -> void {
+    auto intersectNode = [&](const NodeRef& nodeRef, auto&& intersectNodeRecursive) -> void {
         if (nodeRef.type == NodeRef::LEAF)
         {
             intersectLeaf(nodeRef.index);
@@ -316,7 +312,7 @@ void vsg::IntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInters
             {
                 if (intersectBox(bound))
                 {
-                    intersectNode(child, intersectNode);
+                    intersectNodeRecursive(child, intersectNodeRecursive);
                 }
             }
         }
@@ -381,7 +377,7 @@ void vsg::IntersectionOptimizeVisitor::apply(StateGroup& stategroup)
 
     for (auto& child : stategroup.children)
     {
-        if (child->className() == "vsg::VertexDraw")
+        if (::cast<VertexDraw>(child) || ::cast<VertexIndexDraw>(child))
         {
             auto optimized = vsg::IntersectionProxy::create(child);
             optimized->rebuild(*arrayStateStack.back());
