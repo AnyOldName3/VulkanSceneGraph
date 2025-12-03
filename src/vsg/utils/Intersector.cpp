@@ -31,8 +31,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/text/GpuLayoutTechnique.h>
 #include <vsg/utils/Intersector.h>
 
-#include <memory_resource>
-
 using namespace vsg;
 
 struct PushPopNode
