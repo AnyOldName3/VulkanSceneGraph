@@ -14,6 +14,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <atomic>
 #include <map>
+#include <memory_resource>
 #include <string>
 #include <typeindex>
 #include <vector>
