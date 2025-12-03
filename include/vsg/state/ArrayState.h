@@ -47,10 +47,24 @@ namespace vsg
             {
                 return Subclass::create(static_cast<Subclass&>(*arrayState));
             }
+
+            pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource) override
+            {
+                return Subclass::createPmr(resource, static_cast<Subclass&>(*this));
+            }
+
+            pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
+            {
+                return Subclass::createPmr(resource, static_cast<Subclass&>(*arrayState));
+            }
         };
 
-        ArrayState() = default;
+        // makes std::uses_allocator work - there's no uses_memory_resource
+        using allocator_type = std::pmr::polymorphic_allocator<dmat4>;
+
+        ArrayState(const allocator_type& allocator = {});
         ArrayState(const ArrayState& rhs, const CopyOp& copyop = {});
+        ArrayState(const ArrayState& rhs, const allocator_type& allocator, const CopyOp& copyop = {});
 
         /// clone self
         virtual ref_ptr<ArrayState> cloneArrayState()
@@ -64,6 +78,18 @@ namespace vsg
             return ArrayState::create(*arrayState);
         }
 
+        /// clone self
+        virtual pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource)
+        {
+            return ArrayState::createPmr(resource, *this);
+        }
+
+        // clone the specified ArrayState
+        virtual pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState)
+        {
+            return ArrayState::createPmr(resource, *arrayState);
+        }
+
         struct AttributeDetails
         {
             uint32_t binding = 0;
@@ -73,8 +99,8 @@ namespace vsg
             VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         };
 
-        std::vector<dmat4> localToWorldStack;
-        std::vector<dmat4> worldToLocalStack;
+        std::pmr::vector<dmat4> localToWorldStack;
+        std::pmr::vector<dmat4> worldToLocalStack;
 
         VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         uint32_t vertex_attribute_location = 0;
@@ -83,7 +109,7 @@ namespace vsg
         ref_ptr<const vec3Array> vertices;
         ref_ptr<vec3Array> proxy_vertices;
 
-        DataList arrays;
+        std::pmr::vector<ref_ptr<Data>> arrays;
 
         bool getAttributeDetails(const VertexInputState& vas, uint32_t location, AttributeDetails& attributeDetails);
 
@@ -125,8 +151,8 @@ namespace vsg
     class VSG_DECLSPEC NullArrayState : public Inherit<ArrayState, NullArrayState>
     {
     public:
-        NullArrayState();
-        explicit NullArrayState(const ArrayState& as);
+        NullArrayState(const allocator_type& allocator = {});
+        explicit NullArrayState(const ArrayState& as, const allocator_type& allocator = {});
 
         using ArrayState::apply;
 
@@ -139,9 +165,9 @@ namespace vsg
     class VSG_DECLSPEC TranslationArrayState : public Inherit<ArrayState, TranslationArrayState>
     {
     public:
-        TranslationArrayState();
-        TranslationArrayState(const TranslationArrayState& rhs);
-        explicit TranslationArrayState(const ArrayState& rhs);
+        TranslationArrayState(const allocator_type& allocator = {});
+        TranslationArrayState(const TranslationArrayState& rhs, const allocator_type& allocator = {});
+        explicit TranslationArrayState(const ArrayState& rhs, const allocator_type& allocator = {});
 
         uint32_t translation_attribute_location = 7;
         AttributeDetails translationAttribute;
@@ -157,9 +183,9 @@ namespace vsg
     class VSG_DECLSPEC TranslationRotationScaleArrayState : public Inherit<ArrayState, TranslationRotationScaleArrayState>
     {
     public:
-        TranslationRotationScaleArrayState();
-        TranslationRotationScaleArrayState(const TranslationRotationScaleArrayState& rhs);
-        explicit TranslationRotationScaleArrayState(const ArrayState& rhs);
+        TranslationRotationScaleArrayState(const allocator_type& allocator = {});
+        TranslationRotationScaleArrayState(const TranslationRotationScaleArrayState& rhs, const allocator_type& allocator = {});
+        explicit TranslationRotationScaleArrayState(const ArrayState& rhs, const allocator_type& allocator = {});
 
         uint32_t translation_attribute_location = 7;
         uint32_t rotation_attribute_location = 8;
@@ -179,9 +205,9 @@ namespace vsg
     class VSG_DECLSPEC DisplacementMapArrayState : public Inherit<ArrayState, DisplacementMapArrayState>
     {
     public:
-        DisplacementMapArrayState();
-        DisplacementMapArrayState(const DisplacementMapArrayState& rhs);
-        explicit DisplacementMapArrayState(const ArrayState& rhs, const CopyOp& copyop = {});
+        DisplacementMapArrayState(const allocator_type& allocator = {});
+        DisplacementMapArrayState(const DisplacementMapArrayState& rhs, const allocator_type& allocator = {});
+        explicit DisplacementMapArrayState(const ArrayState& rhs, const allocator_type& allocator = {});
 
         // binding of displacement map
         uint32_t normal_attribute_location = 1;
@@ -210,9 +236,9 @@ namespace vsg
     class VSG_DECLSPEC TranslationAndDisplacementMapArrayState : public Inherit<DisplacementMapArrayState, TranslationAndDisplacementMapArrayState>
     {
     public:
-        TranslationAndDisplacementMapArrayState();
-        TranslationAndDisplacementMapArrayState(const TranslationAndDisplacementMapArrayState& rhs);
-        explicit TranslationAndDisplacementMapArrayState(const ArrayState& rhs);
+        TranslationAndDisplacementMapArrayState(const allocator_type& allocator = {});
+        TranslationAndDisplacementMapArrayState(const TranslationAndDisplacementMapArrayState& rhs, const allocator_type& allocator = {});
+        explicit TranslationAndDisplacementMapArrayState(const ArrayState& rhs, const allocator_type& allocator = {});
 
         uint32_t translation_attribute_location = 7;
         AttributeDetails translationAttribute;
@@ -226,9 +252,9 @@ namespace vsg
     class VSG_DECLSPEC BillboardArrayState : public Inherit<ArrayState, BillboardArrayState>
     {
     public:
-        BillboardArrayState();
-        BillboardArrayState(const BillboardArrayState& rhs);
-        explicit BillboardArrayState(const ArrayState& rhs);
+        BillboardArrayState(const allocator_type& allocator = {});
+        BillboardArrayState(const BillboardArrayState& rhs, const allocator_type& allocator = {});
+        explicit BillboardArrayState(const ArrayState& rhs, const allocator_type& allocator = {});
 
         uint32_t translation_attribute_location = 7;
         AttributeDetails translationAttribute;

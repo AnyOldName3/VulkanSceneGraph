@@ -305,12 +305,12 @@ void vsg::PolytopeIntersector::reset(const Camera& camera, double xMin, double y
     worldToLocalStack().push_back(eyeToWorld);
 }
 
-PolytopeIntersector::Intersection::Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, const dmat4& in_localToWorld, const NodePath& in_nodePath, const DataList& in_arrays, const std::vector<uint32_t>& in_indices, uint32_t in_instanceIndex) :
+PolytopeIntersector::Intersection::Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, const dmat4& in_localToWorld, const NodePath& in_nodePath, const std::pmr::vector<ref_ptr<Data>>& in_arrays, const std::vector<uint32_t>& in_indices, uint32_t in_instanceIndex) :
     localIntersection(in_localIntersection),
     worldIntersection(in_worldIntersection),
     localToWorld(in_localToWorld),
     nodePath(in_nodePath),
-    arrays(in_arrays),
+    arrays(in_arrays.begin(), in_arrays.end()),
     indices(in_indices),
     instanceIndex(in_instanceIndex)
 {

@@ -143,6 +143,7 @@ namespace vsg
         }
 
         size_t sizeofObject() const noexcept override { return sizeof(Array); }
+        size_t alignofObject() const noexcept override { return alignof(Array); }
         const char* className() const noexcept override { return type_name<Array>(); }
         const std::type_info& type_info() const noexcept override { return typeid(*this); }
         bool is_compatible(const std::type_info& type) const noexcept override { return typeid(Array) == type || Data::is_compatible(type); }

@@ -34,6 +34,18 @@ using namespace vsg;
 //
 // ArrayState
 //
+
+ArrayState::ArrayState(const allocator_type& allocator) :
+    Inherit(),
+    localToWorldStack(allocator),
+    worldToLocalStack(allocator),
+    vertexAttribute(),
+    vertices(),
+    proxy_vertices(),
+    arrays(allocator)
+{
+}
+
 ArrayState::ArrayState(const ArrayState& rhs, const CopyOp& copyop) :
     Inherit(rhs, copyop),
     localToWorldStack(rhs.localToWorldStack),
@@ -44,6 +56,19 @@ ArrayState::ArrayState(const ArrayState& rhs, const CopyOp& copyop) :
     vertices(rhs.vertices),
     proxy_vertices(rhs.proxy_vertices),
     arrays(rhs.arrays)
+{
+}
+
+vsg::ArrayState::ArrayState(const ArrayState& rhs, const allocator_type& allocator, const CopyOp& copyop) :
+    Inherit(rhs, copyop),
+    localToWorldStack(rhs.localToWorldStack, allocator),
+    worldToLocalStack(rhs.worldToLocalStack, allocator),
+    topology(rhs.topology),
+    vertex_attribute_location(rhs.vertex_attribute_location),
+    vertexAttribute(rhs.vertexAttribute),
+    vertices(rhs.vertices),
+    proxy_vertices(rhs.proxy_vertices),
+    arrays(rhs.arrays, allocator)
 {
 }
 
@@ -208,13 +233,13 @@ void ArrayState::apply(const vsg::Data& array)
 //
 // NullArrayState
 //
-NullArrayState::NullArrayState() :
-    Inherit()
+NullArrayState::NullArrayState(const allocator_type& allocator) :
+    Inherit(allocator)
 {
 }
 
-NullArrayState::NullArrayState(const ArrayState& as) :
-    Inherit(as)
+NullArrayState::NullArrayState(const ArrayState& as, const allocator_type& allocator) :
+    Inherit(as, allocator)
 {
     vertices = {};
 }
@@ -233,19 +258,20 @@ void NullArrayState::apply(const vsg::Data&)
 //
 // TranslationArrayState
 //
-TranslationArrayState::TranslationArrayState()
+TranslationArrayState::TranslationArrayState(const allocator_type& allocator) :
+    Inherit(allocator)
 {
 }
 
-TranslationArrayState::TranslationArrayState(const TranslationArrayState& rhs) :
-    Inherit(rhs),
+TranslationArrayState::TranslationArrayState(const TranslationArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator),
     translation_attribute_location(rhs.translation_attribute_location),
     translationAttribute(rhs.translationAttribute)
 {
 }
 
-TranslationArrayState::TranslationArrayState(const ArrayState& rhs) :
-    Inherit(rhs)
+TranslationArrayState::TranslationArrayState(const ArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator)
 {
 }
 
@@ -278,19 +304,20 @@ ref_ptr<const vec3Array> TranslationArrayState::vertexArray(uint32_t instanceInd
 //
 // TranslationRotationScaleArrayState
 //
-TranslationRotationScaleArrayState::TranslationRotationScaleArrayState()
+TranslationRotationScaleArrayState::TranslationRotationScaleArrayState(const allocator_type& allocator) :
+    Inherit(allocator)
 {
 }
 
-TranslationRotationScaleArrayState::TranslationRotationScaleArrayState(const TranslationRotationScaleArrayState& rhs) :
-    Inherit(rhs),
+TranslationRotationScaleArrayState::TranslationRotationScaleArrayState(const TranslationRotationScaleArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator),
     translation_attribute_location(rhs.translation_attribute_location),
     translationAttribute(rhs.translationAttribute)
 {
 }
 
-TranslationRotationScaleArrayState::TranslationRotationScaleArrayState(const ArrayState& rhs) :
-    Inherit(rhs)
+TranslationRotationScaleArrayState::TranslationRotationScaleArrayState(const ArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator)
 {
 }
 
@@ -333,17 +360,18 @@ ref_ptr<const vec3Array> TranslationRotationScaleArrayState::vertexArray(uint32_
 //
 // DisplacementMapArrayState
 //
-DisplacementMapArrayState::DisplacementMapArrayState()
+DisplacementMapArrayState::DisplacementMapArrayState(const allocator_type& allocator) :
+    Inherit(allocator)
 {
 }
 
-DisplacementMapArrayState::DisplacementMapArrayState(const DisplacementMapArrayState& rhs) :
-    Inherit(rhs)
+DisplacementMapArrayState::DisplacementMapArrayState(const DisplacementMapArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator)
 {
 }
 
-DisplacementMapArrayState::DisplacementMapArrayState(const ArrayState& rhs, const CopyOp& copyop) :
-    Inherit(rhs, copyop)
+DisplacementMapArrayState::DisplacementMapArrayState(const ArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator)
 {
 }
 
@@ -430,17 +458,18 @@ ref_ptr<const vec3Array> DisplacementMapArrayState::vertexArray(uint32_t /*insta
 //
 // TranslationAndDisplacementMapArrayState
 //
-TranslationAndDisplacementMapArrayState::TranslationAndDisplacementMapArrayState()
+TranslationAndDisplacementMapArrayState::TranslationAndDisplacementMapArrayState(const allocator_type& allocator) :
+    Inherit(allocator)
 {
 }
 
-TranslationAndDisplacementMapArrayState::TranslationAndDisplacementMapArrayState(const TranslationAndDisplacementMapArrayState& rhs) :
-    Inherit(rhs)
+TranslationAndDisplacementMapArrayState::TranslationAndDisplacementMapArrayState(const TranslationAndDisplacementMapArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator)
 {
 }
 
-TranslationAndDisplacementMapArrayState::TranslationAndDisplacementMapArrayState(const ArrayState& rhs) :
-    Inherit(rhs)
+TranslationAndDisplacementMapArrayState::TranslationAndDisplacementMapArrayState(const ArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator)
 {
 }
 
@@ -495,19 +524,20 @@ ref_ptr<const vec3Array> TranslationAndDisplacementMapArrayState::vertexArray(ui
 //
 // BillboardArrayState
 //
-BillboardArrayState::BillboardArrayState()
+BillboardArrayState::BillboardArrayState(const allocator_type& allocator) :
+    Inherit(allocator)
 {
 }
 
-BillboardArrayState::BillboardArrayState(const BillboardArrayState& rhs) :
-    Inherit(rhs),
+BillboardArrayState::BillboardArrayState(const BillboardArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator),
     translation_attribute_location(rhs.translation_attribute_location),
     translationAttribute(rhs.translationAttribute)
 {
 }
 
-BillboardArrayState::BillboardArrayState(const ArrayState& rhs) :
-    Inherit(rhs)
+BillboardArrayState::BillboardArrayState(const ArrayState& rhs, const allocator_type& allocator) :
+    Inherit(rhs, allocator)
 {
 }
 

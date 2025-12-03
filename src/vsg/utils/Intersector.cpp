@@ -31,6 +31,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/text/GpuLayoutTechnique.h>
 #include <vsg/utils/Intersector.h>
 
+#include <memory_resource>
+
 using namespace vsg;
 
 struct PushPopNode
@@ -42,10 +44,11 @@ struct PushPopNode
     ~PushPopNode() { nodePath.pop_back(); }
 };
 
-Intersector::Intersector(ref_ptr<ArrayState> initialArrayState)
+Intersector::Intersector(ref_ptr<ArrayState> initialArrayState) :
+    _allocator(std::make_unique<std::pmr::unsynchronized_pool_resource>())
 {
     arrayStateStack.reserve(4);
-    arrayStateStack.emplace_back(initialArrayState ? initialArrayState : ArrayState::create());
+    arrayStateStack.emplace_back(initialArrayState ? initialArrayState->cloneArrayState(_allocator.get()) : ArrayState::createPmr(_allocator.get()));
 }
 
 void Intersector::reset(ref_ptr<ArrayState> initialArrayState)
@@ -55,7 +58,7 @@ void Intersector::reset(ref_ptr<ArrayState> initialArrayState)
     if (initialArrayState)
     {
         arrayStateStack.resize(1);
-        arrayStateStack.front() = initialArrayState;
+        arrayStateStack.front() = initialArrayState->cloneArrayState(_allocator.get());
     }
 
     ubyte_indices.reset();
@@ -76,7 +79,7 @@ void Intersector::apply(const StateGroup& stategroup)
 {
     PushPopNode ppn(_nodePath, &stategroup);
 
-    auto arrayState = stategroup.prototypeArrayState ? stategroup.prototypeArrayState->cloneArrayState(arrayStateStack.back()) : arrayStateStack.back()->cloneArrayState();
+    auto arrayState = stategroup.prototypeArrayState ? stategroup.prototypeArrayState->cloneArrayState(_allocator.get(), arrayStateStack.back()) : arrayStateStack.back()->cloneArrayState(_allocator.get());
 
     for (auto& statecommand : stategroup.stateCommands)
     {

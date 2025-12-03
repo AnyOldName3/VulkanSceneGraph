@@ -158,6 +158,7 @@ namespace vsg
         static void operator delete(void* ptr);
 
         size_t sizeofObject() const noexcept override { return sizeof(Data); }
+        size_t alignofObject() const noexcept override { return alignof(Data); }
         bool is_compatible(const std::type_info& type) const noexcept override { return typeid(Data) == type || Object::is_compatible(type); }
 
         int compare(const Object& rhs_object) const override;

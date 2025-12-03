@@ -24,7 +24,7 @@ namespace vsg
     {
     public:
         using NodePath = std::vector<const Node*>;
-        using ArrayStateStack = std::vector<ref_ptr<ArrayState>>;
+        using ArrayStateStack = std::vector<pmr_ref_ptr<ArrayState>>;
 
         Intersector(ref_ptr<ArrayState> initialArrayState = {});
 
@@ -77,10 +77,10 @@ namespace vsg
         virtual bool intersectDrawIndexed(uint32_t firstIndex, uint32_t indexCount, uint32_t firstInstance, uint32_t instanceCount) = 0;
 
         /// get the current local to world matrix stack
-        std::vector<dmat4>& localToWorldStack() { return arrayStateStack.back()->localToWorldStack; }
+        std::pmr::vector<dmat4>& localToWorldStack() { return arrayStateStack.back()->localToWorldStack; }
 
         /// get the current world to local matrix stack
-        std::vector<dmat4>& worldToLocalStack() { return arrayStateStack.back()->worldToLocalStack; }
+        std::pmr::vector<dmat4>& worldToLocalStack() { return arrayStateStack.back()->worldToLocalStack; }
 
     protected:
         ArrayStateStack arrayStateStack;
@@ -90,6 +90,8 @@ namespace vsg
         ref_ptr<const uintArray> uint_indices;
 
         NodePath _nodePath;
+
+        std::unique_ptr<std::pmr::memory_resource> _allocator;
     };
     VSG_type_name(vsg::Intersector);
 
