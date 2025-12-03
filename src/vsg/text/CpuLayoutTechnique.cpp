@@ -31,19 +31,20 @@ using namespace vsg;
 class VSG_DECLSPEC CpuLayoutTechniqueArrayState : public Inherit<ArrayState, CpuLayoutTechniqueArrayState>
 {
 public:
-    CpuLayoutTechniqueArrayState(const CpuLayoutTechniqueArrayState& rhs) :
-        Inherit(rhs),
+    CpuLayoutTechniqueArrayState(const CpuLayoutTechniqueArrayState& rhs, const allocator_type& allocator = {}) :
+        Inherit(rhs, allocator),
         technique(rhs.technique)
     {
     }
 
-    explicit CpuLayoutTechniqueArrayState(const CpuLayoutTechnique* in_technique) :
+    explicit CpuLayoutTechniqueArrayState(const CpuLayoutTechnique* in_technique, const allocator_type& allocator = {}) :
+        Inherit(allocator),
         technique(in_technique)
     {
     }
 
-    explicit CpuLayoutTechniqueArrayState(const ArrayState& rhs) :
-        Inherit(rhs)
+    explicit CpuLayoutTechniqueArrayState(const ArrayState& rhs, const allocator_type& allocator = {}) :
+        Inherit(rhs, allocator)
     {
     }
 
@@ -52,6 +53,13 @@ public:
     ref_ptr<ArrayState> cloneArrayState(ref_ptr<ArrayState> arrayState) override
     {
         auto clone = CpuLayoutTechniqueArrayState::create(*arrayState);
+        clone->technique = technique;
+        return clone;
+    }
+
+    pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
+    {
+        auto clone = CpuLayoutTechniqueArrayState::createPmr(resource, *arrayState);
         clone->technique = technique;
         return clone;
     }

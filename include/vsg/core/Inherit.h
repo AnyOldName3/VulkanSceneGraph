@@ -51,6 +51,33 @@ namespace vsg
         }
 
         template<typename... Args>
+        static pmr_ref_ptr<Subclass> createPmr(std::pmr::memory_resource* resource, Args&&... args)
+        {
+            std::pmr::polymorphic_allocator<Subclass> alloc(resource);
+            Subclass* ptr = alloc.allocate(1);
+            try
+            {
+                // roughly equivalent to
+                // alloc.construct(ptr, std::forward<Args>(args)...);
+                // we can't use that, though, as vsg::Object destructor is protected, so std::is_constructible_v is false
+                if constexpr (!std::uses_allocator_v<Subclass, decltype(alloc)>)
+                {
+                    ::new ((void*)ptr) Subclass(std::forward<Args>(args)...);
+                }
+                else
+                {
+                    ::new ((void*)ptr) Subclass(std::forward<Args>(args)..., alloc);
+                }
+            }
+            catch (...)
+            {
+                alloc.deallocate(ptr, 1);
+                throw;
+            }
+            return pmr_ref_ptr<Subclass>(resource, ptr);
+        }
+
+        template<typename... Args>
         static ref_ptr<Subclass> create_if(bool flag, Args&&... args)
         {
             if (flag) return ref_ptr<Subclass>(new Subclass(std::forward<Args>(args)...));
@@ -58,6 +85,7 @@ namespace vsg
         }
 
         std::size_t sizeofObject() const noexcept override { return sizeof(Subclass); }
+        std::size_t alignofObject() const noexcept override { return alignof(Subclass); }
         const char* className() const noexcept override { return type_name<Subclass>(); }
         const std::type_info& type_info() const noexcept override { return typeid(Subclass); }
         bool is_compatible(const std::type_info& type) const noexcept override { return typeid(Subclass) == type || BaseClass::is_compatible(type); }

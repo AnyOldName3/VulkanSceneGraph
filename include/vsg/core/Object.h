@@ -65,6 +65,22 @@ namespace vsg
         Object& operator=(const Object&);
 
         static ref_ptr<Object> create() { return ref_ptr<Object>(new Object); }
+        static pmr_ref_ptr<Object> createPmr(std::pmr::memory_resource* resource)
+        {
+            std::pmr::polymorphic_allocator<Object> alloc(resource);
+            Object* ptr = alloc.allocate(1);
+            try
+            {
+                // alloc.construct(ptr);
+                ::new ((void*)ptr) Object();
+            }
+            catch (...)
+            {
+                alloc.deallocate(ptr, 1);
+                throw;
+            }
+            return pmr_ref_ptr<Object>(resource, ptr);
+        }
 
         static ref_ptr<Object> create_if(bool flag)
         {
@@ -79,6 +95,7 @@ namespace vsg
         static void operator delete(void* ptr);
 
         virtual std::size_t sizeofObject() const noexcept { return sizeof(Object); }
+        virtual std::size_t alignofObject() const noexcept { return alignof(Object); }
         virtual const char* className() const noexcept { return type_name<Object>(); }
 
         /// return the std::type_info of this Object
@@ -118,6 +135,10 @@ namespace vsg
         }
         inline void unref_nodelete() const noexcept { _referenceCount.fetch_sub(1, std::memory_order_seq_cst); }
         inline unsigned int referenceCount() const noexcept { return _referenceCount.load(); }
+        void unrefPmr(std::pmr::memory_resource* memoryResource) const
+        {
+            if (_referenceCount.fetch_sub(1, std::memory_order_seq_cst) <= 1) _attemptDeletePmr(memoryResource);
+        }
 
         /// meta data access methods
         /// wraps the value with a vsg::Value<T> object and then assigns via setObject(key, vsg::Value<T>)
@@ -174,6 +195,7 @@ namespace vsg
         virtual ~Object();
 
         virtual void _attemptDelete() const;
+        virtual void _attemptDeletePmr(std::pmr::memory_resource* memoryResource) const;
         void setAuxiliary(Auxiliary* auxiliary);
 
     private:

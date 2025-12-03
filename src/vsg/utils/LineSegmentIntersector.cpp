@@ -214,13 +214,13 @@ void LineSegmentIntersector::reset(const Camera& camera, int32_t x, int32_t y, r
     _lineSegmentStack.back() = LineSegment{eyeToWorld * eye_near, eyeToWorld * eye_far};
 }
 
-LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, const NodePath& in_nodePath, const DataList& in_arrays, const IndexRatios& in_indexRatios, uint32_t in_instanceIndex) :
+LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, const NodePath& in_nodePath, const std::pmr::vector<ref_ptr<Data>>& in_arrays, const IndexRatios& in_indexRatios, uint32_t in_instanceIndex) :
     localIntersection(in_localIntersection),
     worldIntersection(in_worldIntersection),
     ratio(in_ratio),
     localToWorld(in_localToWorld),
     nodePath(in_nodePath),
-    arrays(in_arrays),
+    arrays(in_arrays.begin(), in_arrays.end()),
     indexRatios(in_indexRatios),
     instanceIndex(in_instanceIndex)
 {

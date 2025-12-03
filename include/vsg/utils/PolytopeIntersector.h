@@ -40,7 +40,7 @@ namespace vsg
         {
         public:
             Intersection() {}
-            Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, const dmat4& in_localToWorld, const NodePath& in_nodePath, const DataList& in_arrays, const std::vector<uint32_t>& in_indexRatios, uint32_t in_instanceIndex);
+            Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, const dmat4& in_localToWorld, const NodePath& in_nodePath, const std::pmr::vector<ref_ptr<Data>>& in_arrays, const std::vector<uint32_t>& in_indexRatios, uint32_t in_instanceIndex);
 
             dvec3 localIntersection;
             dvec3 worldIntersection;

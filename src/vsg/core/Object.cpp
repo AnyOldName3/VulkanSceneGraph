@@ -99,6 +99,27 @@ void Object::_attemptDelete() const
     }
 }
 
+void Object::_attemptDeletePmr(std::pmr::memory_resource* memoryResource) const
+{
+    // what should happen when _delete is called on an Object with ref() of zero?  Need to decide whether this buggy application usage should be tested for.
+
+    // if there is an auxiliary attached signal to it we wish to delete, and give it an opportunity to decide whether a delete is appropriate.
+    // if no auxiliary is attached then go straight ahead and delete.
+    if (_auxiliary == nullptr || _auxiliary->signalConnectedObjectToBeDeleted())
+    {
+        //debug("Object::_delete() ", this, " calling delete");
+
+        auto size = sizeofObject();
+        auto align = alignofObject();
+        this->~Object();
+        memoryResource->deallocate(const_cast<Object*>(this), size, align);
+    }
+    else
+    {
+        debug("Object::_delete() ", this, " choosing not to delete");
+    }
+}
+
 ref_ptr<Object> Object::clone(const CopyOp& copyop) const
 {
     if (copyop.duplicate)

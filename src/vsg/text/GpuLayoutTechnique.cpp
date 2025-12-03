@@ -31,23 +31,24 @@ using namespace vsg;
 class VSG_DECLSPEC GpuLayoutTechniqueArrayState : public Inherit<ArrayState, GpuLayoutTechniqueArrayState>
 {
 public:
-    GpuLayoutTechniqueArrayState(const GpuLayoutTechnique* in_technique, const Text* in_text, bool in_billboard) :
+    GpuLayoutTechniqueArrayState(const GpuLayoutTechnique* in_technique, const Text* in_text, bool in_billboard, const allocator_type& allocator = {}) :
+        Inherit(allocator),
         technique(in_technique),
         text(in_text),
         billboard(in_billboard)
     {
     }
 
-    GpuLayoutTechniqueArrayState(const GpuLayoutTechniqueArrayState& rhs) :
-        Inherit(rhs),
+    GpuLayoutTechniqueArrayState(const GpuLayoutTechniqueArrayState& rhs, const allocator_type& allocator = {}) :
+        Inherit(rhs, allocator),
         technique(rhs.technique),
         text(rhs.text),
         billboard(rhs.billboard)
     {
     }
 
-    explicit GpuLayoutTechniqueArrayState(const ArrayState& rhs) :
-        Inherit(rhs)
+    explicit GpuLayoutTechniqueArrayState(const ArrayState& rhs, const allocator_type& allocator = {}) :
+        Inherit(rhs, allocator)
     {
     }
 
@@ -56,6 +57,15 @@ public:
     ref_ptr<ArrayState> cloneArrayState(ref_ptr<ArrayState> arrayState) override
     {
         auto clone = GpuLayoutTechniqueArrayState::create(*arrayState);
+        clone->technique = technique;
+        clone->text = text;
+        clone->billboard = billboard;
+        return clone;
+    }
+
+    pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
+    {
+        auto clone = GpuLayoutTechniqueArrayState::createPmr(resource, *arrayState);
         clone->technique = technique;
         clone->text = text;
         clone->billboard = billboard;
