@@ -74,7 +74,7 @@ More detailed Windows platform instructions can be found [below](#detailed-instr
 
 ## Quick build instructions for Android
 
-Requires Android NDK 18 and CMake 3.13 (lower CMake versions may work but have not been tested).
+Requires Android NDK 26 and CMake 3.13 (lower CMake versions may work but have not been tested).
 
 	cmake ./ \
 	-DCMAKE_BUILD_TYPE="Debug" \
@@ -280,7 +280,7 @@ It's recommended at this point that you add the VSG install path to your CMAKE_P
 
 This guide describes building the VSG for Android. These steps have been completed on macOS but should be almost identical on Linux and similar on Windows. In order to build VSG for Android you'll need the following installed on your machine.
 
-	Android NDK 18
+	Android NDK 26
 	CMake 3.13
 
 The easiest way to get the Android NDK installed is via Android Studio. Follow the link below to download and install it for your OS.
@@ -289,7 +289,7 @@ The easiest way to get the Android NDK installed is via Android Studio. Follow t
 
 Go to the 'SDK Manager' and ensure you have at least Android API level 24 installed, then go to the 'SDK Tools' tab and check the 'NDK' option. Once done click apply and Android Studio should download and install these components for you.
 
-If you already have Android Studio and or the NDK installed, still go to the 'SDK Manager' and see if you need to update your NDK to version 18.
+If you already have Android Studio and or the NDK installed, still go to the 'SDK Manager' and see if you need to update your NDK to version 26.
 
 Take note of the 'Android SDK Location' as you'll need it when running CMake to generate our Android make files.
 

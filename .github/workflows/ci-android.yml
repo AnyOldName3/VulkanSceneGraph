@@ -24,7 +24,7 @@ jobs:
     - name: Setup NDK  
       uses: nttld/setup-ndk@v1
       with:
-        ndk-version: r23c
+        ndk-version: r26c
     - name: Build and Install VSG
       shell: bash
       run: |
