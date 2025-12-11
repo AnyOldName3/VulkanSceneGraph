@@ -37,8 +37,6 @@ using namespace vsg;
 
 ArrayState::ArrayState(const allocator_type& allocator) :
     Inherit(),
-    localToWorldStack(allocator),
-    worldToLocalStack(allocator),
     vertexAttribute(),
     vertices(),
     proxy_vertices(),
@@ -48,8 +46,6 @@ ArrayState::ArrayState(const allocator_type& allocator) :
 
 ArrayState::ArrayState(const ArrayState& rhs, const CopyOp& copyop) :
     Inherit(rhs, copyop),
-    localToWorldStack(rhs.localToWorldStack),
-    worldToLocalStack(rhs.worldToLocalStack),
     topology(rhs.topology),
     vertex_attribute_location(rhs.vertex_attribute_location),
     vertexAttribute(rhs.vertexAttribute),
@@ -61,8 +57,6 @@ ArrayState::ArrayState(const ArrayState& rhs, const CopyOp& copyop) :
 
 vsg::ArrayState::ArrayState(const ArrayState& rhs, const allocator_type& allocator, const CopyOp& copyop) :
     Inherit(rhs, copyop),
-    localToWorldStack(rhs.localToWorldStack, allocator),
-    worldToLocalStack(rhs.worldToLocalStack, allocator),
     topology(rhs.topology),
     vertex_attribute_location(rhs.vertex_attribute_location),
     vertexAttribute(rhs.vertexAttribute),
@@ -72,7 +66,7 @@ vsg::ArrayState::ArrayState(const ArrayState& rhs, const allocator_type& allocat
 {
 }
 
-ref_ptr<const vec3Array> ArrayState::vertexArray(uint32_t /*instanceIndex*/)
+ref_ptr<const vec3Array> ArrayState::vertexArray(uint32_t /*instanceIndex*/, const std::vector<dmat4>& /*localToWorldStack*/, const std::vector<dmat4>& /*worldToLocalStack*/)
 {
     return vertices;
 }
@@ -281,7 +275,7 @@ void TranslationArrayState::apply(const VertexInputState& vas)
     getAttributeDetails(vas, translation_attribute_location, translationAttribute);
 }
 
-ref_ptr<const vec3Array> TranslationArrayState::vertexArray(uint32_t instanceIndex)
+ref_ptr<const vec3Array> TranslationArrayState::vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& /*localToWorldStack*/, const std::vector<dmat4>& /*worldToLocalStack*/)
 {
     auto translations = arrays[translationAttribute.binding].cast<vec3Array>();
 
@@ -329,7 +323,7 @@ void TranslationRotationScaleArrayState::apply(const VertexInputState& vas)
     getAttributeDetails(vas, scale_attribute_location, scaleAttribute);
 }
 
-ref_ptr<const vec3Array> TranslationRotationScaleArrayState::vertexArray(uint32_t instanceIndex)
+ref_ptr<const vec3Array> TranslationRotationScaleArrayState::vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& /*localToWorldStack*/, const std::vector<dmat4>& /*worldToLocalStack*/)
 {
     auto translations = arrays[translationAttribute.binding].cast<vec3Array>();
     auto rotations = arrays[rotationAttribute.binding].cast<quatArray>();
@@ -423,7 +417,7 @@ void DisplacementMapArrayState::apply(const VertexInputState& vas)
     getAttributeDetails(vas, texcoord_attribute_location, texcoordAttribute);
 }
 
-ref_ptr<const vec3Array> DisplacementMapArrayState::vertexArray(uint32_t /*instanceIndex*/)
+ref_ptr<const vec3Array> DisplacementMapArrayState::vertexArray(uint32_t /*instanceIndex*/, const std::vector<dmat4>& /*localToWorldStack*/, const std::vector<dmat4>& /*worldToLocalStack*/)
 {
     if (displacementMap)
     {
@@ -481,7 +475,7 @@ void TranslationAndDisplacementMapArrayState::apply(const VertexInputState& vas)
     getAttributeDetails(vas, translation_attribute_location, translationAttribute);
 }
 
-ref_ptr<const vec3Array> TranslationAndDisplacementMapArrayState::vertexArray(uint32_t instanceIndex)
+ref_ptr<const vec3Array> TranslationAndDisplacementMapArrayState::vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& /*localToWorldStack*/, const std::vector<dmat4>& /*worldToLocalStack*/)
 {
     auto translations = arrays[translationAttribute.binding].cast<vec3Array>();
 
@@ -547,7 +541,7 @@ void BillboardArrayState::apply(const VertexInputState& vas)
     getAttributeDetails(vas, translation_attribute_location, translationAttribute);
 }
 
-ref_ptr<const vec3Array> BillboardArrayState::vertexArray(uint32_t instanceIndex)
+ref_ptr<const vec3Array> BillboardArrayState::vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack)
 {
     struct GetValue : public ConstVisitor
     {

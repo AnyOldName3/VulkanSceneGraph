@@ -38,6 +38,8 @@ namespace vsg
         PolytopeIntersector& intersector;
         ArrayState& arrayState;
         const Polytope& polytope;
+        const std::vector<dmat4>& localToWorldStack;
+        const std::vector<dmat4>& worldToLocalStack;
         ref_ptr<const vec3Array> sourceVertices;
         uint32_t instanceIndex = 0;
 
@@ -46,10 +48,12 @@ namespace vsg
         std::vector<dvec3> trimmedVertices;
         std::vector<double> trimmedDistances;
 
-        PolytopePrimitiveIntersection(PolytopeIntersector& in_polyopeIntersector, ArrayState& in_arrayState, const Polytope& in_polytope) :
+        PolytopePrimitiveIntersection(PolytopeIntersector& in_polyopeIntersector, ArrayState& in_arrayState, const Polytope& in_polytope, const std::vector<dmat4>& in_localToWorldStack, const std::vector<dmat4>& in_worldToLocalStack) :
             intersector(in_polyopeIntersector),
             arrayState(in_arrayState),
-            polytope(in_polytope)
+            polytope(in_polytope),
+            localToWorldStack(in_localToWorldStack),
+            worldToLocalStack(in_worldToLocalStack)
         {
             size_t maxNumOfProcessedVertices = 3 + polytope.size();
             processedVertices.reserve(maxNumOfProcessedVertices);
@@ -60,7 +64,7 @@ namespace vsg
 
         bool instance(uint32_t index)
         {
-            sourceVertices = arrayState.vertexArray(index);
+            sourceVertices = arrayState.vertexArray(index, localToWorldStack, worldToLocalStack);
             instanceIndex = index;
             return sourceVertices.valid();
         }
@@ -374,7 +378,7 @@ bool PolytopeIntersector::intersectDraw(uint32_t firstVertex, uint32_t vertexCou
 
     auto& arrayState = *arrayStateStack.back();
 
-    vsg::PrimitiveFunctor<vsg::PolytopePrimitiveIntersection> printPrimitives(*this, arrayState, _polytopeStack.back());
+    vsg::PrimitiveFunctor<vsg::PolytopePrimitiveIntersection> printPrimitives(*this, arrayState, _polytopeStack.back(), _localToWorldStack, _worldToLocalStack);
     printPrimitives.draw(arrayState.topology, firstVertex, vertexCount, firstInstance, instanceCount);
 
     return intersections.size() != previous_size;
@@ -386,7 +390,7 @@ bool PolytopeIntersector::intersectDrawIndexed(uint32_t firstIndex, uint32_t ind
 
     auto& arrayState = *arrayStateStack.back();
 
-    vsg::PrimitiveFunctor<vsg::PolytopePrimitiveIntersection> printPrimtives(*this, arrayState, _polytopeStack.back());
+    vsg::PrimitiveFunctor<vsg::PolytopePrimitiveIntersection> printPrimtives(*this, arrayState, _polytopeStack.back(), _localToWorldStack, _worldToLocalStack);
     if (ubyte_indices)
         printPrimtives.drawIndexed(arrayState.topology, ubyte_indices, firstIndex, indexCount, firstInstance, instanceCount);
     else if (ushort_indices)

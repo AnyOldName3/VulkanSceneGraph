@@ -99,9 +99,6 @@ namespace vsg
             VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         };
 
-        std::pmr::vector<dmat4> localToWorldStack;
-        std::pmr::vector<dmat4> worldToLocalStack;
-
         VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         uint32_t vertex_attribute_location = 0;
         AttributeDetails vertexAttribute;
@@ -137,7 +134,7 @@ namespace vsg
         virtual void applyArray(uint32_t binding, const ref_ptr<BufferInfo>& in_array);
         virtual void applyArray(uint32_t binding, const ref_ptr<Data>& in_array);
 
-        virtual ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex);
+        virtual ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack);
 
     protected:
         virtual ~ArrayState() {}
@@ -175,7 +172,7 @@ namespace vsg
         using ArrayState::apply;
 
         void apply(const VertexInputState& vas) override;
-        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex) override;
+        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack) override;
     };
     VSG_type_name(vsg::TranslationArrayState);
 
@@ -197,7 +194,7 @@ namespace vsg
         using ArrayState::apply;
 
         void apply(const VertexInputState& vas) override;
-        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex) override;
+        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack) override;
     };
     VSG_type_name(vsg::TranslationRotationScaleArrayState);
 
@@ -228,7 +225,7 @@ namespace vsg
         void apply(const BindDescriptorSet& bds) override;
         void apply(const BindDescriptorSets& bds) override;
         void apply(const VertexInputState& vas) override;
-        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex) override;
+        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack) override;
     };
     VSG_type_name(vsg::DisplacementMapArrayState);
 
@@ -244,7 +241,7 @@ namespace vsg
         AttributeDetails translationAttribute;
 
         void apply(const VertexInputState& vas) override;
-        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex) override;
+        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack) override;
     };
     VSG_type_name(vsg::TranslationAndDisplacementMapArrayState);
 
@@ -262,7 +259,7 @@ namespace vsg
         using ArrayState::apply;
 
         void apply(const VertexInputState& vas) override;
-        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex) override;
+        ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack) override;
     };
     VSG_type_name(vsg::BillboardArrayState);
 
