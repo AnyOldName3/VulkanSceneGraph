@@ -316,7 +316,7 @@ bool LineSegmentIntersector::intersectDraw(uint32_t firstVertex, uint32_t vertex
     uint32_t lastIndex = instanceCount > 1 ? (firstInstance + instanceCount) : firstInstance + 1;
     for (uint32_t instanceIndex = firstInstance; instanceIndex < lastIndex; ++instanceIndex)
     {
-        TriangleIntersector<double> triIntersector(*this, ls.start, ls.end, arrayState.vertexArray(instanceIndex));
+        TriangleIntersector<double> triIntersector(*this, ls.start, ls.end, arrayState.vertexArray(instanceIndex, _localToWorldStack, _worldToLocalStack));
         if (!triIntersector.vertices) return false;
 
         uint32_t endVertex = int((firstVertex + vertexCount) / 3.0f) * 3;
@@ -341,7 +341,7 @@ bool LineSegmentIntersector::intersectDrawIndexed(uint32_t firstIndex, uint32_t 
     uint32_t lastIndex = instanceCount > 1 ? (firstInstance + instanceCount) : firstInstance + 1;
     for (uint32_t instanceIndex = firstInstance; instanceIndex < lastIndex; ++instanceIndex)
     {
-        TriangleIntersector<double> triIntersector(*this, ls.start, ls.end, arrayState.vertexArray(instanceIndex));
+        TriangleIntersector<double> triIntersector(*this, ls.start, ls.end, arrayState.vertexArray(instanceIndex, _localToWorldStack, _worldToLocalStack));
         if (!triIntersector.vertices) continue;
 
         triIntersector.instanceIndex = instanceIndex;

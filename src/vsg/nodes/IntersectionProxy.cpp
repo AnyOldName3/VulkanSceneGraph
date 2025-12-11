@@ -110,7 +110,7 @@ void vsg::IntersectionProxy::rebuild(vsg::ArrayState& arrayState)
 
         for (uint32_t instanceIndex = vertexDraw->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
-            if (auto vertices = arrayState.vertexArray(instanceIndex))
+            if (auto vertices = arrayState.vertexArray(instanceIndex, {}, {}))
             {
                 for (uint32_t i = vertexDraw->firstVertex; (i + 2) < endVertex; i += 3)
                 {
@@ -141,7 +141,7 @@ void vsg::IntersectionProxy::rebuild(vsg::ArrayState& arrayState)
 
         for (uint32_t instanceIndex = vertexIndexDraw->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
-            if (auto vertices = arrayState.vertexArray(instanceIndex))
+            if (auto vertices = arrayState.vertexArray(instanceIndex, {}, {}))
             {
                 for (uint32_t i = vertexIndexDraw->firstIndex; i < endIndex; i += 3)
                 {

@@ -72,7 +72,7 @@ public:
         return clone;
     }
 
-    ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex) override
+    ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack) override
     {
         // compute the position of the glyph
         float horiAdvance = 0.0;

@@ -232,7 +232,7 @@ void ComputeBounds::applyDraw(uint32_t firstVertex, uint32_t vertexCount, uint32
 
     for (uint32_t instanceIndex = firstInstance; instanceIndex < lastIndex; ++instanceIndex)
     {
-        if (auto vertices = arrayState.vertexArray(instanceIndex))
+        if (auto vertices = arrayState.vertexArray(instanceIndex, {}, {}))
         {
             for (uint32_t i = firstVertex; i < endVertex; ++i)
             {
@@ -254,7 +254,7 @@ void ComputeBounds::applyDrawIndexed(uint32_t firstIndex, uint32_t indexCount, u
     {
         for (uint32_t instanceIndex = firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
-            if (auto vertices = arrayState.vertexArray(instanceIndex))
+            if (auto vertices = arrayState.vertexArray(instanceIndex, {}, {}))
             {
                 for (uint32_t i = firstIndex; i < endIndex; ++i)
                 {
@@ -267,7 +267,7 @@ void ComputeBounds::applyDrawIndexed(uint32_t firstIndex, uint32_t indexCount, u
     {
         for (uint32_t instanceIndex = firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
-            if (auto vertices = arrayState.vertexArray(instanceIndex))
+            if (auto vertices = arrayState.vertexArray(instanceIndex, {}, {}))
             {
                 for (uint32_t i = firstIndex; i < endIndex; ++i)
                 {
