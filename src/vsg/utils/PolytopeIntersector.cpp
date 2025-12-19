@@ -325,7 +325,7 @@ PolytopeIntersector::Intersection::Intersection(const dvec3& in_localIntersectio
 
 PolytopeIntersector::Intersection& PolytopeIntersector::add(const dvec3& coord, const std::vector<uint32_t>& indices, uint32_t instanceIndex)
 {
-    auto localToWorld = computeTransform(_nodePath);
+    const auto& localToWorld = localToWorldStack().empty() ? dmat4() : localToWorldStack().back();
     intersections.emplace_back(coord, localToWorld * coord, localToWorld, _nodePath, arrayStateStack.back()->arrays, indices, instanceIndex);
 
     return intersections.back();

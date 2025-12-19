@@ -228,7 +228,7 @@ LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersec
 
 LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex)
 {
-    auto localToWorld = computeTransform(_nodePath);
+    const auto& localToWorld = localToWorldStack().empty() ? dmat4() : localToWorldStack().back();
     intersections.emplace_back(coord, localToWorld * coord, ratio, localToWorld, _nodePath, arrayStateStack.back()->arrays, indexRatios, instanceIndex);
 
     return intersections.back();
