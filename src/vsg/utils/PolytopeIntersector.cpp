@@ -323,15 +323,12 @@ PolytopeIntersector::Intersection::Intersection(const dvec3& in_localIntersectio
 {
 }
 
-ref_ptr<PolytopeIntersector::Intersection> PolytopeIntersector::add(const dvec3& coord, const std::vector<uint32_t>& indices, uint32_t instanceIndex)
+PolytopeIntersector::Intersection& PolytopeIntersector::add(const dvec3& coord, const std::vector<uint32_t>& indices, uint32_t instanceIndex)
 {
-    ref_ptr<Intersection> intersection;
-
     auto localToWorld = computeTransform(_nodePath);
-    intersection = Intersection::create(coord, localToWorld * coord, localToWorld, _nodePath, arrayStateStack.back()->arrays, indices, instanceIndex);
-    intersections.emplace_back(intersection);
+    intersections.emplace_back(coord, localToWorld * coord, localToWorld, _nodePath, arrayStateStack.back()->arrays, indices, instanceIndex);
 
-    return intersection;
+    return intersections.back();
 }
 
 void PolytopeIntersector::pushTransform(const Transform& transform)

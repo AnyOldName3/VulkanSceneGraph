@@ -38,7 +38,7 @@ namespace vsg
         virtual void reset(const dvec3& s, const dvec3& e, ref_ptr<ArrayState> initialArrayData = {});
         virtual void reset(const Camera& camera, int32_t x, int32_t y, ref_ptr<ArrayState> initialArrayData = {});
 
-        class VSG_DECLSPEC Intersection : public Inherit<Object, Intersection>
+        class VSG_DECLSPEC Intersection
         {
         public:
             Intersection() {}
@@ -58,10 +58,10 @@ namespace vsg
             operator bool() const { return !nodePath.empty(); }
         };
 
-        using Intersections = std::vector<ref_ptr<Intersection>>;
+        using Intersections = std::vector<Intersection>;
         Intersections intersections;
 
-        ref_ptr<Intersection> add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex);
+        Intersection& add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex);
 
         using Intersector::apply;
 
