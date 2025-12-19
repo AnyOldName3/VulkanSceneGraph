@@ -36,7 +36,7 @@ namespace vsg
         virtual void reset(const Polytope& in_polytope, ref_ptr<ArrayState> initialArrayData = {});
         virtual void reset(const Camera& camera, double xMin, double yMin, double xMax, double yMax, ref_ptr<ArrayState> initialArrayData = {});
 
-        class VSG_DECLSPEC Intersection : public Inherit<Object, Intersection>
+        class VSG_DECLSPEC Intersection
         {
         public:
             Intersection() {}
@@ -55,10 +55,10 @@ namespace vsg
             operator bool() const { return !nodePath.empty(); }
         };
 
-        using Intersections = std::vector<ref_ptr<Intersection>>;
+        using Intersections = std::vector<Intersection>;
         Intersections intersections;
 
-        ref_ptr<Intersection> add(const dvec3& coord, const std::vector<uint32_t>& indices, uint32_t instanceIndex);
+        Intersection& add(const dvec3& coord, const std::vector<uint32_t>& indices, uint32_t instanceIndex);
 
         void pushTransform(const Transform& transform) override;
         void popTransform() override;

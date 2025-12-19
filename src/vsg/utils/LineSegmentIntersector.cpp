@@ -226,15 +226,12 @@ LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersec
 {
 }
 
-ref_ptr<LineSegmentIntersector::Intersection> LineSegmentIntersector::add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex)
+LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex)
 {
-    ref_ptr<Intersection> intersection;
-
     auto localToWorld = computeTransform(_nodePath);
-    intersection = Intersection::create(coord, localToWorld * coord, ratio, localToWorld, _nodePath, arrayStateStack.back()->arrays, indexRatios, instanceIndex);
-    intersections.emplace_back(intersection);
+    intersections.emplace_back(coord, localToWorld * coord, ratio, localToWorld, _nodePath, arrayStateStack.back()->arrays, indexRatios, instanceIndex);
 
-    return intersection;
+    return intersections.back();
 }
 
 void LineSegmentIntersector::apply(const IntersectionProxy& intersectionProxy)
