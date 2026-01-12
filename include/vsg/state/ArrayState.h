@@ -48,12 +48,12 @@ namespace vsg
                 return Subclass::create(static_cast<Subclass&>(*arrayState));
             }
 
-            pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource) override
+            ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource) override
             {
                 return Subclass::createPmr(resource, static_cast<Subclass&>(*this));
             }
 
-            pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
+            ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
             {
                 return Subclass::createPmr(resource, static_cast<Subclass&>(*arrayState));
             }
@@ -79,13 +79,13 @@ namespace vsg
         }
 
         /// clone self
-        virtual pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource)
+        virtual ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource)
         {
             return ArrayState::createPmr(resource, *this);
         }
 
         // clone the specified ArrayState
-        virtual pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState)
+        virtual ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState)
         {
             return ArrayState::createPmr(resource, *arrayState);
         }

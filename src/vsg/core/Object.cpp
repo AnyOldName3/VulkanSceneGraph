@@ -22,6 +22,24 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
+void Deleter::destroy(Object* ptr)
+{
+    ptr->~Object();
+}
+
+PmrDeleter::PmrDeleter(std::pmr::memory_resource* memoryResource) :
+    _memoryResource(memoryResource)
+{
+}
+
+void PmrDeleter::operator()(Object* ptr)
+{
+    auto size = ptr->sizeofObject();
+    auto align = ptr->alignofObject();
+    destroy(ptr);
+    _memoryResource->deallocate(ptr, size, align);
+}
+
 Object::Object() :
     _referenceCount(0),
     _auxiliary(nullptr)
@@ -99,26 +117,26 @@ void Object::_attemptDelete() const
     }
 }
 
-void Object::_attemptDeletePmr(std::pmr::memory_resource* memoryResource) const
-{
-    // what should happen when _delete is called on an Object with ref() of zero?  Need to decide whether this buggy application usage should be tested for.
-
-    // if there is an auxiliary attached signal to it we wish to delete, and give it an opportunity to decide whether a delete is appropriate.
-    // if no auxiliary is attached then go straight ahead and delete.
-    if (_auxiliary == nullptr || _auxiliary->signalConnectedObjectToBeDeleted())
-    {
-        //debug("Object::_delete() ", this, " calling delete");
-
-        auto size = sizeofObject();
-        auto align = alignofObject();
-        this->~Object();
-        memoryResource->deallocate(const_cast<Object*>(this), size, align);
-    }
-    else
-    {
-        debug("Object::_delete() ", this, " choosing not to delete");
-    }
-}
+//void Object::_attemptDeletePmr(std::pmr::memory_resource* memoryResource) const
+//{
+//    // what should happen when _delete is called on an Object with ref() of zero?  Need to decide whether this buggy application usage should be tested for.
+//
+//    // if there is an auxiliary attached signal to it we wish to delete, and give it an opportunity to decide whether a delete is appropriate.
+//    // if no auxiliary is attached then go straight ahead and delete.
+//    if (_auxiliary == nullptr || _auxiliary->signalConnectedObjectToBeDeleted())
+//    {
+//        //debug("Object::_delete() ", this, " calling delete");
+//
+//        auto size = sizeofObject();
+//        auto align = alignofObject();
+//        this->~Object();
+//        memoryResource->deallocate(const_cast<Object*>(this), size, align);
+//    }
+//    else
+//    {
+//        debug("Object::_delete() ", this, " choosing not to delete");
+//    }
+//}
 
 ref_ptr<Object> Object::clone(const CopyOp& copyop) const
 {
@@ -188,6 +206,11 @@ void Object::write(Output& output) const
     {
         output.writeValue<uint32_t>("userObjects", 0);
     }
+}
+
+void Object::setDeleter(std::unique_ptr<Deleter>&& deleter)
+{
+    getOrCreateAuxiliary()->setDeleter(std::move(deleter));
 }
 
 void Object::setObject(const std::string& key, ref_ptr<Object> object)

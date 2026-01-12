@@ -20,7 +20,8 @@ using namespace vsg;
 
 Auxiliary::Auxiliary(Object* object) :
     _referenceCount(0),
-    _connectedObject(object)
+    _connectedObject(object),
+    _deleter(nullptr)
 {
     //vsg::debug("Auxiliary::Auxiliary(Object = ", object, ") ", this);
 }
@@ -53,11 +54,22 @@ void Auxiliary::unref_nodelete() const
 
 bool Auxiliary::signalConnectedObjectToBeDeleted()
 {
+    ref_ptr<Auxiliary> lifetimeGuarantor;
     std::scoped_lock<std::mutex> guard(_mutex);
 
     if (_connectedObject && _connectedObject->referenceCount() > 0)
     {
         // return false, the object should not be deleted
+        return false;
+    }
+
+    if (_deleter)
+    {
+        // we must ensure this isn't destroyed until we're done and the mutex is released
+        lifetimeGuarantor = this;
+        (*_deleter)(_connectedObject);
+        _connectedObject = nullptr;
+        // return false - the deleter has deleted the object already
         return false;
     }
 
@@ -73,6 +85,11 @@ void Auxiliary::resetConnectedObject()
     std::scoped_lock<std::mutex> guard(_mutex);
 
     _connectedObject = nullptr;
+}
+
+void Auxiliary::setDeleter(std::unique_ptr<Deleter>&& deleter)
+{
+    _deleter = std::move(deleter);
 }
 
 int Auxiliary::compare(const Auxiliary& rhs) const

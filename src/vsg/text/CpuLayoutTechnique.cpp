@@ -57,7 +57,7 @@ public:
         return clone;
     }
 
-    pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
+    ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
     {
         auto clone = CpuLayoutTechniqueArrayState::createPmr(resource, *arrayState);
         clone->technique = technique;

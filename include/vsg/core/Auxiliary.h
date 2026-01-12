@@ -92,10 +92,13 @@ namespace vsg
         virtual ~Auxiliary();
 
         /// reset the ConnectedObject pointer to 0 unless the ConnectedObject referenceCount goes back above 0,
-        /// return true if ConnectedObject should still be deleted, or false if the object should be kept.
+        /// return true if ConnectedObject should still be deleted,
+        /// or false if the object should be kept or has already been deleted by a custom deleter.
         bool signalConnectedObjectToBeDeleted();
 
         void resetConnectedObject();
+
+        void setDeleter(std::unique_ptr<Deleter>&& deleter);
 
         friend class Object;
         friend class Allocator;
@@ -104,6 +107,8 @@ namespace vsg
 
         mutable std::mutex _mutex;
         Object* _connectedObject;
+
+        std::unique_ptr<Deleter> _deleter;
     };
 
 } // namespace vsg

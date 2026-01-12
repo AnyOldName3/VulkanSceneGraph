@@ -12,8 +12,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
-#include <memory_resource>
-
 namespace vsg
 {
 
@@ -200,40 +198,4 @@ namespace vsg
 
         T* _ptr;
     };
-
-    template <class T>
-    class pmr_ref_ptr : public ref_ptr<T>
-    {
-        // two-phase name lookup is really mean with this class
-    public:
-        pmr_ref_ptr() noexcept :
-            pmr_ref_ptr::ref_ptr(nullptr),
-            _memoryResource(nullptr)
-        {}
-
-        pmr_ref_ptr(std::pmr::memory_resource* resource, T* ptr) noexcept :
-            pmr_ref_ptr::ref_ptr(ptr),
-            _memoryResource(resource)
-        {}
-
-        template <class U>
-        pmr_ref_ptr(const pmr_ref_ptr<U>& rhs) noexcept :
-            pmr_ref_ptr::ref_ptr(static_cast<const ref_ptr<U>&>(rhs)),
-            _memoryResource(rhs._memoryResource)
-        {}
-
-        ~pmr_ref_ptr()
-        {
-            if (this->_ptr) this->_ptr->unrefPmr(_memoryResource);
-            // disarm ~ref_ptr()
-            this->_ptr = nullptr;
-        }
-
-    protected:
-        template<class R>
-        friend class pmr_ref_ptr;
-
-        std::pmr::memory_resource* _memoryResource;
-    };
-
 } // namespace vsg

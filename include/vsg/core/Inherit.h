@@ -51,7 +51,7 @@ namespace vsg
         }
 
         template<typename... Args>
-        static pmr_ref_ptr<Subclass> createPmr(std::pmr::memory_resource* resource, Args&&... args)
+        static ref_ptr<Subclass> createPmr(std::pmr::memory_resource* resource, Args&&... args)
         {
             std::pmr::polymorphic_allocator<Subclass> alloc(resource);
             Subclass* ptr = alloc.allocate(1);
@@ -74,7 +74,8 @@ namespace vsg
                 alloc.deallocate(ptr, 1);
                 throw;
             }
-            return pmr_ref_ptr<Subclass>(resource, ptr);
+            ptr->setDeleter(std::make_unique<PmrDeleter>(resource));
+            return ref_ptr<Subclass>(ptr);
         }
 
         template<typename... Args>

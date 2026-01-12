@@ -14,6 +14,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <atomic>
 #include <map>
+#include <memory_resource>
 #include <string>
 #include <typeindex>
 #include <vector>
@@ -56,6 +57,26 @@ namespace vsg
 
     VSG_type_name(vsg::Object);
 
+    class VSG_DECLSPEC Deleter
+    {
+    public:
+        virtual void operator()(vsg::Object* ptr) = 0;
+
+    protected:
+        static void destroy(vsg::Object* ptr);
+    };
+
+    class VSG_DECLSPEC PmrDeleter : public Deleter
+    {
+    public:
+        PmrDeleter(std::pmr::memory_resource* memoryResource);
+
+        void operator()(vsg::Object* ptr) override;
+    
+    protected:
+        std::pmr::memory_resource* _memoryResource;
+    };
+
     class VSG_DECLSPEC Object
     {
     public:
@@ -65,7 +86,7 @@ namespace vsg
         Object& operator=(const Object&);
 
         static ref_ptr<Object> create() { return ref_ptr<Object>(new Object); }
-        static pmr_ref_ptr<Object> createPmr(std::pmr::memory_resource* resource)
+        static ref_ptr<Object> createPmr(std::pmr::memory_resource* resource)
         {
             std::pmr::polymorphic_allocator<Object> alloc(resource);
             Object* ptr = alloc.allocate(1);
@@ -79,7 +100,8 @@ namespace vsg
                 alloc.deallocate(ptr, 1);
                 throw;
             }
-            return pmr_ref_ptr<Object>(resource, ptr);
+            ptr->setDeleter(std::make_unique<PmrDeleter>(resource));
+            return ref_ptr<Object>(ptr);
         }
 
         static ref_ptr<Object> create_if(bool flag)
@@ -135,10 +157,8 @@ namespace vsg
         }
         inline void unref_nodelete() const noexcept { _referenceCount.fetch_sub(1, std::memory_order_seq_cst); }
         inline unsigned int referenceCount() const noexcept { return _referenceCount.load(); }
-        void unrefPmr(std::pmr::memory_resource* memoryResource) const
-        {
-            if (_referenceCount.fetch_sub(1, std::memory_order_seq_cst) <= 1) _attemptDeletePmr(memoryResource);
-        }
+
+        void setDeleter(std::unique_ptr<Deleter>&& deleter);
 
         /// meta data access methods
         /// wraps the value with a vsg::Value<T> object and then assigns via setObject(key, vsg::Value<T>)
@@ -195,11 +215,11 @@ namespace vsg
         virtual ~Object();
 
         virtual void _attemptDelete() const;
-        virtual void _attemptDeletePmr(std::pmr::memory_resource* memoryResource) const;
         void setAuxiliary(Auxiliary* auxiliary);
 
     private:
         friend class Auxiliary;
+        friend class Deleter;
 
         mutable std::atomic_uint _referenceCount;
 
