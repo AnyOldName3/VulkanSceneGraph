@@ -83,6 +83,8 @@ namespace vsg
         std::vector<dmat4>& worldToLocalStack() { return _worldToLocalStack; }
 
     protected:
+        std::unique_ptr<std::pmr::memory_resource> _allocator;
+
         ArrayStateStack arrayStateStack;
 
         std::vector<dmat4> _localToWorldStack;
@@ -93,8 +95,6 @@ namespace vsg
         ref_ptr<const uintArray> uint_indices;
 
         NodePath _nodePath;
-
-        std::unique_ptr<std::pmr::memory_resource> _allocator;
     };
     VSG_type_name(vsg::Intersector);
 
