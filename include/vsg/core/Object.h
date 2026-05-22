@@ -65,22 +65,6 @@ namespace vsg
         Object& operator=(const Object&);
 
         static ref_ptr<Object> create() { return ref_ptr<Object>(new Object); }
-        static pmr_ref_ptr<Object> createPmr(std::pmr::memory_resource* resource)
-        {
-            std::pmr::polymorphic_allocator<Object> alloc(resource);
-            Object* ptr = alloc.allocate(1);
-            try
-            {
-                // alloc.construct(ptr);
-                ::new ((void*)ptr) Object();
-            }
-            catch (...)
-            {
-                alloc.deallocate(ptr, 1);
-                throw;
-            }
-            return pmr_ref_ptr<Object>(resource, ptr);
-        }
 
         static ref_ptr<Object> create_if(bool flag)
         {

@@ -24,7 +24,7 @@ namespace vsg
     {
     public:
         using NodePath = std::vector<const Node*>;
-        using ArrayStateStack = std::vector<pmr_ref_ptr<ArrayState>>;
+        using ArrayStateStack = std::vector<ref_ptr<ArrayState>>;
 
         Intersector(ref_ptr<ArrayState> initialArrayState = {});
 

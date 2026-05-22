@@ -63,9 +63,10 @@ public:
         return clone;
     }
 
-    pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
+    ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
     {
-        auto clone = GpuLayoutTechniqueArrayState::createPmr(resource, *arrayState);
+        std::pmr::polymorphic_allocator<GpuLayoutTechniqueArrayState> alloc(resource);
+        auto clone = create_with_allocator<GpuLayoutTechniqueArrayState>(alloc, *arrayState);
         clone->technique = technique;
         clone->text = text;
         clone->billboard = billboard;
