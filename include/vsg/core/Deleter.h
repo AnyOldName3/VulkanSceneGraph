@@ -82,7 +82,7 @@ namespace vsg
         }
         else
         {
-            static_assert(false, "Type uses_allocator but isn't allocator-constructible");
+            static_assert(sizeof(T) + 1 == 0, "Type uses_allocator but isn't allocator-constructible");
         }
     }
 
