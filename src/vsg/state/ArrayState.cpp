@@ -66,6 +66,11 @@ vsg::ArrayState::ArrayState(const ArrayState& rhs, const allocator_type& allocat
 {
 }
 
+void ArrayState::_attemptDelete() const
+{
+    deleteDispatcher.attemptDelete(this);
+}
+
 ref_ptr<const vec3Array> ArrayState::vertexArray(uint32_t /*instanceIndex*/, const std::vector<dmat4>& /*localToWorldStack*/, const std::vector<dmat4>& /*worldToLocalStack*/)
 {
     return vertices;

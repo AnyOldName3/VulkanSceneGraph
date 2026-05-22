@@ -14,9 +14,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <vsg/core/ConstVisitor.h>
 #include <vsg/core/Data.h>
+#include <vsg/core/Deleter.h>
 #include <vsg/core/Inherit.h>
 #include <vsg/state/BufferInfo.h>
 #include <vsg/state/Sampler.h>
+
+#include <memory_resource>
 
 namespace vsg
 {
@@ -48,14 +51,16 @@ namespace vsg
                 return Subclass::create(static_cast<Subclass&>(*arrayState));
             }
 
-            pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource) override
+            ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource) override
             {
-                return Subclass::createPmr(resource, static_cast<Subclass&>(*this));
+                std::pmr::polymorphic_allocator<Subclass> alloc(resource);
+                return create_with_allocator<Subclass>(alloc, static_cast<Subclass&>(*this));
             }
 
-            pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
+            ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState) override
             {
-                return Subclass::createPmr(resource, static_cast<Subclass&>(*arrayState));
+                std::pmr::polymorphic_allocator<Subclass> alloc(resource);
+                return create_with_allocator<Subclass>(alloc, static_cast<Subclass&>(*arrayState));
             }
         };
 
@@ -65,6 +70,8 @@ namespace vsg
         ArrayState(const allocator_type& allocator = {});
         ArrayState(const ArrayState& rhs, const CopyOp& copyop = {});
         ArrayState(const ArrayState& rhs, const allocator_type& allocator, const CopyOp& copyop = {});
+
+        ~ArrayState() = default;
 
         /// clone self
         virtual ref_ptr<ArrayState> cloneArrayState()
@@ -79,15 +86,17 @@ namespace vsg
         }
 
         /// clone self
-        virtual pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource)
+        virtual ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource)
         {
-            return ArrayState::createPmr(resource, *this);
+            std::pmr::polymorphic_allocator<ArrayState> alloc(resource);
+            return create_with_allocator<ArrayState>(alloc, *this);
         }
 
         // clone the specified ArrayState
-        virtual pmr_ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState)
+        virtual ref_ptr<ArrayState> cloneArrayState(std::pmr::memory_resource* resource, ref_ptr<ArrayState> arrayState)
         {
-            return ArrayState::createPmr(resource, *arrayState);
+            std::pmr::polymorphic_allocator<ArrayState> alloc(resource);
+            return create_with_allocator<ArrayState>(alloc, *arrayState);
         }
 
         struct AttributeDetails
@@ -107,6 +116,8 @@ namespace vsg
         ref_ptr<vec3Array> proxy_vertices;
 
         std::pmr::vector<ref_ptr<Data>> arrays;
+
+        DeleteDispatcher deleteDispatcher;
 
         bool getAttributeDetails(const VertexInputState& vas, uint32_t location, AttributeDetails& attributeDetails);
 
@@ -137,7 +148,7 @@ namespace vsg
         virtual ref_ptr<const vec3Array> vertexArray(uint32_t instanceIndex, const std::vector<dmat4>& localToWorldStack, const std::vector<dmat4>& worldToLocalStack);
 
     protected:
-        virtual ~ArrayState() {}
+        void _attemptDelete() const override;
     };
     VSG_type_name(vsg::ArrayState);
 

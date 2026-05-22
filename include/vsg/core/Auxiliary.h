@@ -99,6 +99,7 @@ namespace vsg
 
         friend class Object;
         friend class Allocator;
+        friend class DeleteDispatcher;
 
         mutable std::atomic_uint _referenceCount;
 

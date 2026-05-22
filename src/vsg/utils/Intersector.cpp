@@ -46,7 +46,7 @@ Intersector::Intersector(ref_ptr<ArrayState> initialArrayState) :
     _allocator(std::make_unique<std::pmr::unsynchronized_pool_resource>())
 {
     arrayStateStack.reserve(4);
-    arrayStateStack.emplace_back(initialArrayState ? initialArrayState->cloneArrayState(_allocator.get()) : ArrayState::createPmr(_allocator.get()));
+    arrayStateStack.emplace_back(initialArrayState ? initialArrayState->cloneArrayState(_allocator.get()) : ArrayState::create(_allocator.get()));
 }
 
 void Intersector::reset(ref_ptr<ArrayState> initialArrayState)
