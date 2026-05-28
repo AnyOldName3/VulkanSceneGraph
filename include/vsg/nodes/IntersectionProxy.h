@@ -2,7 +2,7 @@
 
 /* <editor-fold desc="MIT License">
 
-Copyright(c) 2025 Chris Djali
+Copyright(c) 2025-2026 Chris Djali
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -19,21 +19,17 @@ namespace vsg
 {
     class LineSegmentIntersector;
 
-    /** IntersectionProxy wraps a node with a BVH to accelerate vsg::Intersector operations */
+    /** IntersectionProxy is used instead of a subgraph for vsg::Intersector operations, e.g. to get the same result faster. */
     class VSG_DECLSPEC IntersectionProxy : public Inherit<Node, IntersectionProxy>
     {
     public:
         IntersectionProxy(Node* in_original);
         IntersectionProxy(const IntersectionProxy& rhs, const CopyOp& copyop = {});
 
-        void rebuild(ArrayState& arrayState);
-
-        bool valid() const;
-
-        void intersect(LineSegmentIntersector& lineSegmentIntersector) const;
+        virtual bool valid() const = 0;
+        virtual void intersect(LineSegmentIntersector& lineSegmentIntersector) const = 0;
 
     public:
-        ref_ptr<Object> clone(const CopyOp& copyop = {}) const override { return IntersectionProxy::create(*this, copyop); }
         int compare(const Object& rhs) const override;
 
         template<class N, class V>
@@ -53,6 +49,31 @@ namespace vsg
 
     protected:
         virtual ~IntersectionProxy();
+    };
+    VSG_type_name(vsg::IntersectionProxy);
+
+    /** BVHIntersectionProxy wraps a node with a BVH to accelerate vsg::Intersector operations */
+    class VSG_DECLSPEC BVHIntersectionProxy : public Inherit<IntersectionProxy, BVHIntersectionProxy>
+    {
+    public:
+        BVHIntersectionProxy(Node* in_original);
+        BVHIntersectionProxy(const BVHIntersectionProxy& rhs, const CopyOp& copyop = {});
+
+        void rebuild(ArrayState& arrayState);
+
+        bool valid() const override;
+
+        void intersect(LineSegmentIntersector& lineSegmentIntersector) const override;
+
+    public:
+        ref_ptr<Object> clone(const CopyOp& copyop = {}) const override { return BVHIntersectionProxy::create(*this, copyop); }
+        int compare(const Object& rhs) const override;
+
+        void read(Input& input) override;
+        void write(Output& output) const override;
+
+    protected:
+        virtual ~BVHIntersectionProxy();
 
         struct Triangle
         {
@@ -100,7 +121,7 @@ namespace vsg
 
         std::vector<LeafMetadata, allocator_affinity_data<LeafMetadata>> leafMetadata;
     };
-    VSG_type_name(vsg::IntersectionProxy)
+    VSG_type_name(vsg::BVHIntersectionProxy)
 
     class VSG_DECLSPEC IntersectionOptimizeVisitor : public Inherit<Visitor, IntersectionOptimizeVisitor>
     {

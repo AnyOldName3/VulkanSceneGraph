@@ -1,6 +1,6 @@
 /* <editor-fold desc="MIT License">
 
-Copyright(c) 2025 Chris Djali
+Copyright(c) 2025-2026 Chris Djali
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -21,6 +21,43 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/utils/LineSegmentIntersector.h>
 
 using namespace vsg;
+
+IntersectionProxy::IntersectionProxy(Node* in_original) :
+    Inherit(),
+    original(in_original)
+{
+}
+
+IntersectionProxy::IntersectionProxy(const IntersectionProxy& rhs, const CopyOp& copyop) :
+    Inherit(rhs, copyop),
+    original(rhs.original)
+{
+}
+
+IntersectionProxy::~IntersectionProxy() = default;
+
+int IntersectionProxy::compare(const Object& rhs_object) const
+{
+    int result = Node::compare(rhs_object);
+    if (result != 0) return result;
+
+    const auto& rhs = static_cast<decltype(*this)>(rhs_object);
+    return compare_pointer(original, rhs.original);
+}
+
+void IntersectionProxy::read(Input& input)
+{
+    Node::read(input);
+
+    input.read("original", original);
+}
+
+void IntersectionProxy::write(Output& output) const
+{
+    Node::write(output);
+
+    output.write("original", original);
+}
 
 namespace
 {
@@ -63,9 +100,8 @@ namespace
     };
 }
 
-IntersectionProxy::IntersectionProxy(Node* in_original) :
-    Inherit(),
-    original(in_original),
+BVHIntersectionProxy::BVHIntersectionProxy(Node* in_original) :
+    Inherit(in_original),
     internalNodes(),
     leaves(),
     bounds(),
@@ -73,9 +109,8 @@ IntersectionProxy::IntersectionProxy(Node* in_original) :
 {
 }
 
-IntersectionProxy::IntersectionProxy(const IntersectionProxy& rhs, const CopyOp& copyop) :
+BVHIntersectionProxy::BVHIntersectionProxy(const BVHIntersectionProxy& rhs, const CopyOp& copyop) :
     Inherit(rhs, copyop),
-    original(rhs.original),
     internalNodes(rhs.internalNodes),
     leaves(rhs.leaves),
     bounds(rhs.bounds),
@@ -83,14 +118,14 @@ IntersectionProxy::IntersectionProxy(const IntersectionProxy& rhs, const CopyOp&
 {
 }
 
-void vsg::IntersectionProxy::rebuild(vsg::ArrayState& arrayState)
+void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
 {
     leaves.clear();
     internalNodes.clear();
 
     if (!original)
     {
-        warn("Attempting to build IntersectionProxy for null node.");
+        warn("Attempting to build BVHIntersectionProxy for null node.");
         return;
     }
 
@@ -132,7 +167,7 @@ void vsg::IntersectionProxy::rebuild(vsg::ArrayState& arrayState)
 
         if (!vertexIndexDraw->indices || !vertexIndexDraw->indices->data)
         {
-            warn("Attempting to build IntersectionProxy for VertexIndexDraw with no indices.");
+            warn("Attempting to build BVHIntersectionProxy for VertexIndexDraw with no indices.");
             return;
         }
 
@@ -153,7 +188,7 @@ void vsg::IntersectionProxy::rebuild(vsg::ArrayState& arrayState)
     }
     else
     {
-        warn("Unsupported node type when building IntersectionProxy: ", original->className());
+        warn("Unsupported node type when building BVHIntersectionProxy: ", original->className());
         return;
     }
 
@@ -226,12 +261,12 @@ void vsg::IntersectionProxy::rebuild(vsg::ArrayState& arrayState)
     std::tie(bounds, boundingVolumeHeirarchy) = computeKDTree(indices.begin(), indices.end(), computeKDTree);
 }
 
-bool IntersectionProxy::valid() const
+bool BVHIntersectionProxy::valid() const
 {
     return boundingVolumeHeirarchy.type != NodeRef::INVALID;
 }
 
-void vsg::IntersectionProxy::intersect(LineSegmentIntersector& lineSegmentIntersector) const
+void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentIntersector) const
 {
     const auto& ls = lineSegmentIntersector.lineSegment();
 
@@ -321,33 +356,30 @@ void vsg::IntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInters
     intersectNode(boundingVolumeHeirarchy, intersectNode);
 }
 
-IntersectionProxy::~IntersectionProxy() = default;
+BVHIntersectionProxy::~BVHIntersectionProxy() = default;
 
-int IntersectionProxy::compare(const Object& rhs_object) const
+int BVHIntersectionProxy::compare(const Object& rhs_object) const
 {
-    int result = Node::compare(rhs_object);
+    int result = IntersectionProxy::compare(rhs_object);
     if (result != 0) return result;
 
     const auto& rhs = static_cast<decltype(*this)>(rhs_object);
-    if ((result = compare_pointer(original, rhs.original)) != 0) return result;
     // computation of BVH should be deterministic, so if the input is the same and it's actually been computed, we shouldn't need to scan all the nodes
     if ((result = compare_value(boundingVolumeHeirarchy.type, rhs.boundingVolumeHeirarchy.type)) != 0) return result;
     return compare_value(boundingVolumeHeirarchy.index, boundingVolumeHeirarchy.index);
 }
 
-void IntersectionProxy::read(Input& input)
+void BVHIntersectionProxy::read(Input& input)
 {
-    Node::read(input);
+    IntersectionProxy::read(input);
 
-    input.read("original", original);
     // todo: deserialise BVH
 }
 
-void IntersectionProxy::write(Output& output) const
+void BVHIntersectionProxy::write(Output& output) const
 {
-    Node::write(output);
+    IntersectionProxy::write(output);
 
-    output.write("original", original);
     // todo: serialise BVH
 }
 
@@ -379,7 +411,7 @@ void vsg::IntersectionOptimizeVisitor::apply(StateGroup& stategroup)
     {
         if (::cast<VertexDraw>(child) || ::cast<VertexIndexDraw>(child))
         {
-            auto optimized = vsg::IntersectionProxy::create(child);
+            auto optimized = vsg::BVHIntersectionProxy::create(child);
             optimized->rebuild(*arrayStateStack.back());
             child = optimized;
         }
