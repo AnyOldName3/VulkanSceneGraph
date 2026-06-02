@@ -212,7 +212,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
     using itr_t = decltype(indices)::iterator;
 
     auto computeKDTree = [&](itr_t first, itr_t last, auto&& computeKDTreeRecursive) -> std::pair<box, NodeRef> {
-        if (static_cast<size_t>(std::distance(first, last)) < trisPerLeaf)
+        if (static_cast<size_t>(std::distance(first, last)) <= trisPerLeaf)
         {
             leaves.emplace_back();
             leafMetadata.emplace_back();
