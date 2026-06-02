@@ -78,8 +78,8 @@ namespace vsg
         struct Triangle
         {
             vec3 vertex0;
-            vec3 vertex1;
-            vec3 vertex2;
+            vec3 edge1;
+            vec3 edge2;
         };
         static constexpr size_t trisPerLeaf = 16;
         struct Leaf

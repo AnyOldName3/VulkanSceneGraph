@@ -149,7 +149,11 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
             {
                 for (uint32_t i = vertexDraw->firstVertex; (i + 2) < endVertex; i += 3)
                 {
-                    triangles.emplace_back(Triangle{vertices->at(i), vertices->at(i + 1), vertices->at(i + 2)});
+                    triangles.emplace_back(Triangle{
+                        vertices->at(i),
+                        vertices->at(i + 1) - vertices->at(i),
+                        vertices->at(i + 2) - vertices->at(i)
+                    });
                     metadata.emplace_back(TriangleMetadata{i, i + 1, i + 2, instanceIndex});
                 }
             }
@@ -180,7 +184,11 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
             {
                 for (uint32_t i = vertexIndexDraw->firstIndex; i < endIndex; i += 3)
                 {
-                    triangles.emplace_back(Triangle{vertices->at(indices[i]), vertices->at(indices[i + 1]), vertices->at(indices[i + 2])});
+                    triangles.emplace_back(Triangle{
+                        vertices->at(indices[i]),
+                        vertices->at(indices[i + 1]) - vertices->at(indices[i]),
+                        vertices->at(indices[i + 2]) - vertices->at(indices[i])
+                    });
                     metadata.emplace_back(TriangleMetadata{indices[i], indices[i + 1], indices[i + 2], instanceIndex});
                 }
             }
@@ -224,8 +232,8 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
                 {
                     leaves.back().tris[i] = triangles[*itr];
                     bound.add(triangles[*itr].vertex0);
-                    bound.add(triangles[*itr].vertex1);
-                    bound.add(triangles[*itr].vertex2);
+                    bound.add(triangles[*itr].vertex0 + triangles[*itr].edge1);
+                    bound.add(triangles[*itr].vertex0 + triangles[*itr].edge2);
                     leafMetadata.back().tris[i] = metadata[*itr];
                     ++itr;
                 }
@@ -306,11 +314,8 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
         {
             const auto& triangle = leaves[index].tris[i];
 
-            vec_type E1 = vec_type(triangle.vertex1) - vec_type(triangle.vertex0);
-            vec_type E2 = vec_type(triangle.vertex2) - vec_type(triangle.vertex0);
-
-            vec_type P = cross(d, E2);
-            value_type det = dot(P, E1);
+            vec_type P = cross(d, vec_type(triangle.edge2));
+            value_type det = dot(P, vec_type(triangle.edge1));
             if (det > -epsilon && det < epsilon) continue;
 
             value_type inv_det = 1.0 / det;
@@ -318,18 +323,18 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
             value_type u = inv_det * dot(P, T);
             if (u < 0.0 || u > 1) continue;
 
-            vec_type Q = cross(T, E1);
+            vec_type Q = cross(T, vec_type(triangle.edge1));
             value_type v = inv_det * dot(Q, d);
             if (v < 0.0 || u + v > 1.0) continue;
 
-            value_type t = inv_det * dot(Q, E2);
+            value_type t = inv_det * dot(Q, vec_type(triangle.edge2));
             if (t < epsilon) continue;
 
             value_type r0 = 1.0 - u - v;
             value_type r1 = u;
             value_type r2 = v;
 
-            dvec3 intersection = dvec3(triangle.vertex0) * double(r0) + dvec3(triangle.vertex1) * double(r1) + dvec3(triangle.vertex2) * double(r2);
+            dvec3 intersection = dvec3(triangle.vertex0) * double(r0 + r1 + r2) + dvec3(triangle.edge1) * double(r1) + dvec3(triangle.edge2) * double(r2);
             const auto& metadata = leafMetadata[index].tris[i];
             lineSegmentIntersector.add(intersection, double(t * inverseLength), {{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}}, metadata.instance);
         }
