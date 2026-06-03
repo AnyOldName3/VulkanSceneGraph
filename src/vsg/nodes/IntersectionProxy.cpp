@@ -286,18 +286,19 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
     vec_type end(ls.end);
 
     vec_type d = end - start;
+    vec_type inv_d(1.0 / d.x, 1.0 / d.y, 1.0 / d.z);
 
     auto intersectBox = [&](const box& bound) {
-        value_type t1 = (bound.min.x - start.x) / d.x;
-        value_type t2 = (bound.max.x - start.x) / d.x;
+        value_type t1 = (bound.min.x - start.x) * inv_d.x;
+        value_type t2 = (bound.max.x - start.x) * inv_d.x;
         value_type tmin = std::min(t1, t2);
         value_type tmax = std::max(t1, t2);
-        t1 = (bound.min.y - start.y) / d.y;
-        t2 = (bound.max.y - start.y) / d.y;
+        t1 = (bound.min.y - start.y) * inv_d.y;
+        t2 = (bound.max.y - start.y) * inv_d.y;
         tmin = std::max(tmin, std::min(t1, t2));
         tmax = std::min(tmax, std::max(t1, t2));
-        t1 = (bound.min.z - start.z) / d.z;
-        t2 = (bound.max.z - start.z) / d.z;
+        t1 = (bound.min.z - start.z) * inv_d.z;
+        t2 = (bound.max.z - start.z) * inv_d.z;
         tmin = std::max(tmin, std::min(t1, t2));
         tmax = std::min(tmax, std::max(t1, t2));
         return tmax >= tmin && tmin < 1.0 && tmax > 0.0;
