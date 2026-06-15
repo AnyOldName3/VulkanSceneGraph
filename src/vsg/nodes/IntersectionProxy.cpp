@@ -204,7 +204,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
     barycenters.reserve(triangles.size());
     for (const auto& triangle : triangles)
     {
-        barycenters.emplace_back((triangle.vertex0 + triangle.vertex1 + triangle.vertex2) / 3.f);
+        barycenters.emplace_back(triangle.vertex0 + (triangle.edge1 + triangle.edge2) / 3.f);
     }
 
     std::vector<size_t> indices;
