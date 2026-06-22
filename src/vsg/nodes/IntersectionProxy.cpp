@@ -319,25 +319,25 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
             value_type det = dot(P, vec_type(triangle.edge1));
             if (det > -epsilon && det < epsilon) continue;
 
-            value_type inv_det = 1.0 / det;
             vec_type T = vec_type(start) - vec_type(triangle.vertex0);
-            value_type u = inv_det * dot(P, T);
-            if (u < 0.0 || u > 1) continue;
+            value_type u2 = dot(P, T);
+            if (det * u2 < 0.0 || std::abs(u2) > std::abs(det)) continue;
 
             vec_type Q = cross(T, vec_type(triangle.edge1));
-            value_type v = inv_det * dot(Q, d);
-            if (v < 0.0 || u + v > 1.0) continue;
+            value_type v2 = dot(Q, d);
+            if (det * v2 < 0.0 || std::abs(u2) + std::abs(v2) > std::abs(det)) continue;
 
-            value_type t = inv_det * dot(Q, vec_type(triangle.edge2));
-            if (t < epsilon) continue;
+            value_type t2 = dot(Q, vec_type(triangle.edge2));
+            if (std::abs(t2) < std::abs(epsilon * det)) continue;
 
-            value_type r0 = 1.0 - u - v;
-            value_type r1 = u;
-            value_type r2 = v;
+            value_type inv_det = 1.0 / det;
+            value_type r1 = u2 * inv_det;
+            value_type r2 = v2 * inv_det;
+            value_type r0 = 1.0 - r1 - r2;
 
             dvec3 intersection = dvec3(triangle.vertex0) * double(r0 + r1 + r2) + dvec3(triangle.edge1) * double(r1) + dvec3(triangle.edge2) * double(r2);
             const auto& metadata = leafMetadata[index].tris[i];
-            lineSegmentIntersector.add(intersection, double(t * inverseLength), {{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}}, metadata.instance);
+            lineSegmentIntersector.add(intersection, double(t2 * inv_det * inverseLength), {{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}}, metadata.instance);
         }
     };
 
