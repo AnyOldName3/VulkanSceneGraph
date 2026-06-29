@@ -81,7 +81,7 @@ namespace vsg
             vec3 edge1;
             vec3 edge2;
         };
-        static constexpr size_t trisPerLeaf = 16;
+        static constexpr size_t trisPerLeaf = 4;
         struct Leaf
         {
             std::array<Triangle, trisPerLeaf> tris;
