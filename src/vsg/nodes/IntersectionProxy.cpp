@@ -254,7 +254,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
             }
             vec3 range = baryBound.max - baryBound.min;
             size_t axisIndex = range.x > range.y ? (range.x > range.z ? 0 : 2) : (range.y > range.z ? 1 : 2);
-            itr_t midpoint = first + std::distance(first, last) / 2;
+            itr_t midpoint = first + (((std::distance(first, last) + trisPerLeaf - 1) / 2) / trisPerLeaf) * trisPerLeaf;
             std::nth_element(first, midpoint, last, [&, axisIndex](const size_t& lhs, const size_t& rhs) { return barycenters[lhs][axisIndex] < barycenters[rhs][axisIndex]; });
             internalNodes.emplace_back(InternalNode{{{computeKDTreeRecursive(first, midpoint, computeKDTreeRecursive), computeKDTreeRecursive(midpoint, last, computeKDTreeRecursive)}}});
             box overallBound;
