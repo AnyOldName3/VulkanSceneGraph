@@ -389,18 +389,19 @@ void BVHIntersectionProxy::write(Output& output) const
     // todo: serialise BVH
 }
 
-vsg::IntersectionOptimizeVisitor::IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState)
+IntersectionOptimizeVisitor::IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState)
 {
     arrayStateStack.reserve(4);
     arrayStateStack.emplace_back(initialArrayState ? initialArrayState : ArrayState::create());
 }
 
-void vsg::IntersectionOptimizeVisitor::apply(Node& node)
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Node& node)
 {
     node.traverse(*this);
+    return std::nullopt;
 }
 
-void vsg::IntersectionOptimizeVisitor::apply(StateGroup& stategroup)
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(StateGroup& stategroup)
 {
     auto arrayState = stategroup.prototypeArrayState ? stategroup.prototypeArrayState->cloneArrayState(arrayStateStack.back()) : arrayStateStack.back()->cloneArrayState();
 
@@ -413,15 +414,21 @@ void vsg::IntersectionOptimizeVisitor::apply(StateGroup& stategroup)
 
     stategroup.traverse(*this);
 
-    for (auto& child : stategroup.children)
-    {
-        if (::cast<VertexDraw>(child) || ::cast<VertexIndexDraw>(child))
-        {
-            auto optimized = vsg::BVHIntersectionProxy::create(child);
-            optimized->rebuild(*arrayStateStack.back());
-            child = optimized;
-        }
-    }
-
     arrayStateStack.pop_back();
+
+    return std::nullopt;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& vertexDraw)
+{
+    auto optimized = BVHIntersectionProxy::create(&vertexDraw);
+    optimized->rebuild(*arrayStateStack.back());
+    return optimized;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDraw& vertexIndexDraw)
+{
+    auto optimized = BVHIntersectionProxy::create(&vertexIndexDraw);
+    optimized->rebuild(*arrayStateStack.back());
+    return optimized;
 }
