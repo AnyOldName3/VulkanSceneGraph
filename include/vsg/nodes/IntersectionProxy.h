@@ -130,16 +130,19 @@ namespace vsg
     };
     VSG_type_name(vsg::BVHIntersectionProxy)
 
-    class VSG_DECLSPEC IntersectionOptimizeVisitor : public Inherit<Visitor, IntersectionOptimizeVisitor>
+    class VSG_DECLSPEC IntersectionOptimizeVisitor : public Inherit<ReplacementVisitor, IntersectionOptimizeVisitor>
     {
     public:
         using ArrayStateStack = std::vector<ref_ptr<ArrayState>>;
 
         IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState = {});
 
-        void apply(Node& node) override;
+        std::optional<ref_ptr<Object>> apply(Node& node) override;
 
-        void apply(StateGroup& stateGroup) override;
+        std::optional<ref_ptr<Object>> apply(StateGroup& stateGroup) override;
+
+        std::optional<ref_ptr<Object>> apply(VertexDraw& vertexDraw) override;
+        std::optional<ref_ptr<Object>> apply(VertexIndexDraw& vertexIndexDraw) override;
 
     protected:
         ArrayStateStack arrayStateStack;
