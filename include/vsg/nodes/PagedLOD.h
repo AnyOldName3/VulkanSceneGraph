@@ -75,7 +75,10 @@ namespace vsg
         void traverse(RecordTraversal& visitor) const override { t_traverse(*this, visitor); }
         void traverse(ReplacementVisitor& visitor) override
         {
-            for (auto& [ratio, node] : children) { visitor.tryReplacePointer(node); }
+            for (auto& [ratio, node] : children)
+            {
+                if (node) visitor.tryReplacePointer(node);
+            }
         }
 
         void read(Input& input) override;
