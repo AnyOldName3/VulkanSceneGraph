@@ -24,13 +24,15 @@ using namespace vsg;
 
 IntersectionProxy::IntersectionProxy(Node* in_original) :
     Inherit(),
-    original(in_original)
+    original(in_original),
+    proxiedNodePath({original})
 {
 }
 
 IntersectionProxy::IntersectionProxy(const IntersectionProxy& rhs, const CopyOp& copyop) :
     Inherit(rhs, copyop),
-    original(rhs.original)
+    original(rhs.original),
+    proxiedNodePath(rhs.proxiedNodePath)
 {
 }
 

@@ -53,6 +53,7 @@ namespace vsg
         void write(Output& output) const override;
 
         ref_ptr<Node> original;
+        std::vector<ref_ptr<const Node>> proxiedNodePath;
 
     protected:
         virtual ~IntersectionProxy();
