@@ -22,6 +22,27 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
+namespace
+{
+    class GetArrays : public ConstVisitor
+    {
+    public:
+        DataList arrays;
+
+        void apply(const VertexDraw& draw) override
+        {
+            arrays.reserve(draw.arrays.size());
+            for (const auto& array : draw.arrays) arrays.push_back(array->data);
+        }
+
+        void apply(const VertexIndexDraw& draw) override
+        {
+            arrays.reserve(draw.arrays.size());
+            for (const auto& array : draw.arrays) arrays.push_back(array->data);
+        }
+    };
+}
+
 IntersectionProxy::IntersectionProxy(Node* in_original) :
     Inherit(),
     original(in_original),
@@ -339,7 +360,9 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
 
             dvec3 intersection = dvec3(triangle.vertex0) * double(r0 + r1 + r2) + dvec3(triangle.edge1) * double(r1) + dvec3(triangle.edge2) * double(r2);
             const auto& metadata = leafMetadata[index].tris[i];
-            lineSegmentIntersector.add(intersection, double(t2 * inv_det * inverseLength), {{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}}, metadata.instance);
+            GetArrays arrayGetter;
+            original->accept(arrayGetter);
+            lineSegmentIntersector.add(intersection, double(t2 * inv_det * inverseLength), {{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}}, metadata.instance, std::move(arrayGetter.arrays));
         }
     };
 
