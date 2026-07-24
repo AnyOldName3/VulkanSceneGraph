@@ -145,6 +145,8 @@ namespace vsg
         std::optional<ref_ptr<Object>> apply(VertexDraw& vertexDraw) override;
         std::optional<ref_ptr<Object>> apply(VertexIndexDraw& vertexIndexDraw) override;
 
+        std::optional<ref_ptr<Object>> apply(IntersectionProxy& intersectionProxy) override;
+
     protected:
         ArrayStateStack arrayStateStack;
     };
