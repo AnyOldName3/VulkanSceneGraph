@@ -42,7 +42,7 @@ namespace vsg
         {
         public:
             Intersection() {}
-            Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, const NodePath& in_nodePath, const std::pmr::vector<ref_ptr<Data>>& in_arrays, const IndexRatios& in_indexRatios, uint32_t in_instanceIndex);
+            Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, const NodePath& in_nodePath, DataList&& in_arrays, const IndexRatios& in_indexRatios, uint32_t in_instanceIndex);
 
             dvec3 localIntersection;
             dvec3 worldIntersection;
@@ -62,6 +62,7 @@ namespace vsg
         Intersections intersections;
 
         Intersection& add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex);
+        Intersection& add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex, DataList&& arrays);
 
         using Intersector::apply;
 

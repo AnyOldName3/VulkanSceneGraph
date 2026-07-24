@@ -214,13 +214,13 @@ void LineSegmentIntersector::reset(const Camera& camera, int32_t x, int32_t y, r
     _lineSegmentStack.back() = LineSegment{eyeToWorld * eye_near, eyeToWorld * eye_far};
 }
 
-LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, const NodePath& in_nodePath, const std::pmr::vector<ref_ptr<Data>>& in_arrays, const IndexRatios& in_indexRatios, uint32_t in_instanceIndex) :
+LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, const NodePath& in_nodePath, DataList&& in_arrays, const IndexRatios& in_indexRatios, uint32_t in_instanceIndex) :
     localIntersection(in_localIntersection),
     worldIntersection(in_worldIntersection),
     ratio(in_ratio),
     localToWorld(in_localToWorld),
     nodePath(in_nodePath),
-    arrays(in_arrays.begin(), in_arrays.end()),
+    arrays(std::move(in_arrays)),
     indexRatios(in_indexRatios),
     instanceIndex(in_instanceIndex)
 {
@@ -229,7 +229,15 @@ LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersec
 LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex)
 {
     const auto& localToWorld = localToWorldStack().empty() ? dmat4() : localToWorldStack().back();
-    intersections.emplace_back(coord, localToWorld * coord, ratio, localToWorld, _nodePath, arrayStateStack.back()->arrays, indexRatios, instanceIndex);
+    intersections.emplace_back(coord, localToWorld * coord, ratio, localToWorld, _nodePath, DataList(arrayStateStack.back()->arrays.begin(), arrayStateStack.back()->arrays.end()), indexRatios, instanceIndex);
+
+    return intersections.back();
+}
+
+LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex, DataList&& arrays)
+{
+    const auto& localToWorld = localToWorldStack().empty() ? dmat4() : localToWorldStack().back();
+    intersections.emplace_back(coord, localToWorld * coord, ratio, localToWorld, _nodePath, std::move(arrays), indexRatios, instanceIndex);
 
     return intersections.back();
 }
