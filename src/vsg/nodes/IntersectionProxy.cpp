@@ -434,3 +434,8 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDra
     optimized->rebuild(*arrayStateStack.back());
     return optimized;
 }
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(IntersectionProxy& intersectionProxy)
+{
+    return std::nullopt;
+}
