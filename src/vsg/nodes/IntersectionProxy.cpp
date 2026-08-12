@@ -559,23 +559,23 @@ namespace
         void apply(const DrawIndexed&) override { bypassable = false; }
     };
 
-    std::optional<ref_ptr<IntersectionProxy>> createBypassFor(Node& node, const std::vector<Node*>& intersectableDescendents)
+    std::optional<ref_ptr<IntersectionProxy>> createBypassFor(Node& node, const std::vector<Node*>& intersectableDescendants)
     {
-        if (intersectableDescendents.size() > 1)
+        if (intersectableDescendants.size() > 1)
         {
             std::vector<MultiBypassIntersectionProxy::Target> targets;
-            targets.reserve(intersectableDescendents.size());
-            for (const Node* descendent : intersectableDescendents)
+            targets.reserve(intersectableDescendants.size());
+            for (const Node* descendant : intersectableDescendants)
             {
-                targets.push_back({ref_ptr(descendent), {}});
+                targets.push_back({ref_ptr(descendant), {}});
             }
             auto mbip = MultiBypassIntersectionProxy::create(&node, std::move(targets));
             // todo: node path
             return mbip;
         }
-        else if (intersectableDescendents.size() > 0)
+        else if (intersectableDescendants.size() > 0)
         {
-            auto bip = BypassIntersectionProxy::create(&node, intersectableDescendents.front());
+            auto bip = BypassIntersectionProxy::create(&node, intersectableDescendants.front());
             // todo: node path
             return bip;
         }
@@ -610,23 +610,23 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Node& node)
 
             if (nodeNbd.bypassable)
             {
-                auto itr = intersectableDescendents.find(&node);
-                if (itr != intersectableDescendents.end())
+                auto itr = intersectableDescendants.find(&node);
+                if (itr != intersectableDescendants.end())
                 {
-                    for (auto* descendent : itr->second)
+                    for (auto* descendant : itr->second)
                     {
-                        intersectableDescendents[nodePath.back()].push_back(descendent);
+                        intersectableDescendants[nodePath.back()].push_back(descendant);
                     }
                 }
             }
             else
             {
-                intersectableDescendents[nodePath.back()].push_back(&node);
+                intersectableDescendants[nodePath.back()].push_back(&node);
             }
         }
         else if (nodeNbd.bypassable)
         {
-            return createBypassFor(node, intersectableDescendents[&node]);
+            return createBypassFor(node, intersectableDescendants[&node]);
         }
     }
     else
@@ -635,11 +635,11 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Node& node)
 
         if (nodeNbd.bypassable)
         {
-            proxy = createBypassFor(node, intersectableDescendents[&node]);
+            proxy = createBypassFor(node, intersectableDescendants[&node]);
         }
 
         // We're finished with this scenegraph, get the visitor ready to process the next one
-        intersectableDescendents.clear();
+        intersectableDescendants.clear();
 
         return proxy;
     }
@@ -672,7 +672,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& ve
 
     if (!nodePath.empty())
     {
-        intersectableDescendents[nodePath.back()].push_back(optimized);
+        intersectableDescendants[nodePath.back()].push_back(optimized);
     }
     return optimized;
 }
@@ -684,7 +684,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDra
 
     if (!nodePath.empty())
     {
-        intersectableDescendents[nodePath.back()].push_back(optimized);
+        intersectableDescendants[nodePath.back()].push_back(optimized);
     }
     return optimized;
 }
@@ -693,7 +693,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(IntersectionPr
 {
     if (!nodePath.empty())
     {
-        intersectableDescendents[nodePath.back()].push_back(&intersectionProxy);
+        intersectableDescendants[nodePath.back()].push_back(&intersectionProxy);
     }
     return std::nullopt;
 }

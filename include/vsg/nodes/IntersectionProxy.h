@@ -205,7 +205,7 @@ namespace vsg
     protected:
         ArrayStateStack arrayStateStack;
         NodePath nodePath;
-        std::map<const Node*, std::vector<Node*>> intersectableDescendents;
+        std::map<const Node*, std::vector<Node*>> intersectableDescendants;
     };
     VSG_type_name(vsg::IntersectionOptimizeVisitor);
 } // namespace vsg
