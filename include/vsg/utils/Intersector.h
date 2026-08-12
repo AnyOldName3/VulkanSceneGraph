@@ -82,6 +82,9 @@ namespace vsg
         /// get the current world to local matrix stack
         std::vector<dmat4>& worldToLocalStack() { return _worldToLocalStack; }
 
+        // get the current node path
+        NodePath& nodePath() { return _nodePath; }
+
     protected:
         std::unique_ptr<std::pmr::memory_resource> _allocator;
 

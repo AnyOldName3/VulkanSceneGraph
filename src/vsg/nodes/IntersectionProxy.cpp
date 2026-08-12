@@ -414,6 +414,175 @@ void BVHIntersectionProxy::write(Output& output) const
     // todo: serialise BVH
 }
 
+BypassIntersectionProxy::BypassIntersectionProxy(Node* in_original, Node* in_target) :
+    Inherit(in_original),
+    target(in_target)
+{
+}
+
+BypassIntersectionProxy::BypassIntersectionProxy(const BypassIntersectionProxy& rhs, const CopyOp& copyop) :
+    Inherit(rhs, copyop),
+    target(rhs.target)
+{
+}
+
+bool BypassIntersectionProxy::valid() const
+{
+    return target != nullptr;
+}
+
+void BypassIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentIntersector) const
+{
+    target->accept(lineSegmentIntersector);
+}
+
+BypassIntersectionProxy::~BypassIntersectionProxy() = default;
+
+int BypassIntersectionProxy::compare(const Object& rhs_object) const
+{
+    int result = IntersectionProxy::compare(rhs_object);
+    if (result != 0) return result;
+
+    const auto& rhs = static_cast<decltype(*this)>(rhs_object);
+
+    return compare_pointer(target, rhs.target);
+}
+
+void BypassIntersectionProxy::read(Input& input)
+{
+    IntersectionProxy::read(input);
+
+    input.read("target", target);
+}
+
+void BypassIntersectionProxy::write(Output& output) const
+{
+    IntersectionProxy::write(output);
+
+    output.write("target", target);
+}
+
+MultiBypassIntersectionProxy::MultiBypassIntersectionProxy(Node* in_original, std::vector<Target>&& in_targets) :
+    Inherit(in_original),
+    targets(std::move(in_targets))
+{
+}
+
+MultiBypassIntersectionProxy::MultiBypassIntersectionProxy(const MultiBypassIntersectionProxy& rhs, const CopyOp& copyop) :
+    Inherit(rhs, copyop),
+    targets(rhs.targets)
+{
+}
+
+bool MultiBypassIntersectionProxy::valid() const
+{
+    if (targets.empty()) return false;
+    for (const auto& target : targets)
+    {
+        if (target.node == nullptr) return false;
+    }
+    return true;
+}
+
+void MultiBypassIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentIntersector) const
+{
+    Intersector::NodePath& nodePath = lineSegmentIntersector.nodePath();
+    for (const auto& target : targets)
+    {
+        for (const auto& node : target.nodePath) nodePath.push_back(node);
+        target.node->accept(lineSegmentIntersector);
+        for (const auto& node : target.nodePath) nodePath.pop_back();
+    }
+}
+
+MultiBypassIntersectionProxy::~MultiBypassIntersectionProxy() = default;
+
+int MultiBypassIntersectionProxy::compare(const Object& rhs_object) const
+{
+    int result = IntersectionProxy::compare(rhs_object);
+    if (result != 0) return result;
+
+    const auto& rhs = static_cast<decltype(*this)>(rhs_object);
+
+    if (targets.size() < rhs.targets.size()) return -1;
+    if (targets.size() > rhs.targets.size()) return 1;
+    if (targets.empty()) return 0;
+
+    auto rhs_itr = rhs.targets.begin();
+    for (auto lhs_itr = targets.begin(); lhs_itr != targets.end(); ++lhs_itr, ++rhs_itr)
+    {
+        if ((result = compare_pointer(lhs_itr->node, rhs_itr->node)) != 0) return result;
+        if ((result = compare_pointer_container(lhs_itr->nodePath, rhs_itr->nodePath)) != 0) return result;
+    }
+
+    return 0;
+}
+
+void MultiBypassIntersectionProxy::read(Input& input)
+{
+    IntersectionProxy::read(input);
+
+    targets.resize(input.readValue<uint32_t>("targets"));
+    for (auto& target : targets)
+    {
+        input.read("target.node", target.node);
+        input.readObjects("target.nodePath", target.nodePath);
+    }
+}
+
+void MultiBypassIntersectionProxy::write(Output& output) const
+{
+    IntersectionProxy::write(output);
+
+    output.writeValue<uint32_t>("targets", targets.size());
+    for (const auto& target : targets)
+    {
+        output.write("target.node", target.node);
+        output.writeObjects("target.nodePath", target.nodePath);
+    }
+}
+
+namespace
+{
+    struct NoBypassDetector : public ConstVisitor
+    {
+        bool bypassable = true;
+
+        void apply(const Transform&) override { bypassable = false; }
+        void apply(const LOD&) override { bypassable = false; }
+        void apply(const PagedLOD&) override { bypassable = false; }
+        void apply(const CullNode&) override { bypassable = false; }
+        void apply(const CullGroup&) override { bypassable = false; }
+        void apply(const DepthSorted&) override { bypassable = false; }
+        void apply(const Geometry&) override { bypassable = false; }
+        void apply(const Draw&) override { bypassable = false; }
+        void apply(const DrawIndexed&) override { bypassable = false; }
+    };
+
+    std::optional<ref_ptr<IntersectionProxy>> createBypassFor(Node& node, const std::vector<Node*>& intersectableDescendents)
+    {
+        if (intersectableDescendents.size() > 1)
+        {
+            std::vector<MultiBypassIntersectionProxy::Target> targets;
+            targets.reserve(intersectableDescendents.size());
+            for (const Node* descendent : intersectableDescendents)
+            {
+                targets.push_back({ref_ptr(descendent), {}});
+            }
+            auto mbip = MultiBypassIntersectionProxy::create(&node, std::move(targets));
+            // todo: node path
+            return mbip;
+        }
+        else if (intersectableDescendents.size() > 0)
+        {
+            auto bip = BypassIntersectionProxy::create(&node, intersectableDescendents.front());
+            // todo: node path
+            return bip;
+        }
+        return std::nullopt;
+    }
+}
+
 IntersectionOptimizeVisitor::IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState)
 {
     arrayStateStack.reserve(4);
@@ -422,7 +591,59 @@ IntersectionOptimizeVisitor::IntersectionOptimizeVisitor(ref_ptr<ArrayState> ini
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Node& node)
 {
+    nodePath.push_back(&node);
+
     node.traverse(*this);
+
+    nodePath.pop_back();
+
+    NoBypassDetector nodeNbd;
+    node.accept(nodeNbd);
+
+    if (!nodePath.empty())
+    {
+        NoBypassDetector parentNbd;
+        nodePath.back()->accept(parentNbd);
+
+        if (parentNbd.bypassable)
+        {
+
+            if (nodeNbd.bypassable)
+            {
+                auto itr = intersectableDescendents.find(&node);
+                if (itr != intersectableDescendents.end())
+                {
+                    for (auto* descendent : itr->second)
+                    {
+                        intersectableDescendents[nodePath.back()].push_back(descendent);
+                    }
+                }
+            }
+            else
+            {
+                intersectableDescendents[nodePath.back()].push_back(&node);
+            }
+        }
+        else if (nodeNbd.bypassable)
+        {
+            return createBypassFor(node, intersectableDescendents[&node]);
+        }
+    }
+    else
+    {
+        std::optional<ref_ptr<IntersectionProxy>> proxy;
+
+        if (nodeNbd.bypassable)
+        {
+            proxy = createBypassFor(node, intersectableDescendents[&node]);
+        }
+
+        // We're finished with this scenegraph, get the visitor ready to process the next one
+        intersectableDescendents.clear();
+
+        return proxy;
+    }
+
     return std::nullopt;
 }
 
@@ -437,7 +658,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(StateGroup& st
 
     arrayStateStack.emplace_back(arrayState);
 
-    stategroup.traverse(*this);
+    auto replacement = apply(static_cast<Node&>(stategroup));
 
     arrayStateStack.pop_back();
 
@@ -448,6 +669,11 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& ve
 {
     auto optimized = BVHIntersectionProxy::create(&vertexDraw);
     optimized->rebuild(*arrayStateStack.back());
+
+    if (!nodePath.empty())
+    {
+        intersectableDescendents[nodePath.back()].push_back(optimized);
+    }
     return optimized;
 }
 
@@ -455,10 +681,19 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDra
 {
     auto optimized = BVHIntersectionProxy::create(&vertexIndexDraw);
     optimized->rebuild(*arrayStateStack.back());
+
+    if (!nodePath.empty())
+    {
+        intersectableDescendents[nodePath.back()].push_back(optimized);
+    }
     return optimized;
 }
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(IntersectionProxy& intersectionProxy)
 {
+    if (!nodePath.empty())
+    {
+        intersectableDescendents[nodePath.back()].push_back(&intersectionProxy);
+    }
     return std::nullopt;
 }

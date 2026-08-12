@@ -129,11 +129,66 @@ namespace vsg
 
         std::vector<LeafMetadata, allocator_affinity_data<LeafMetadata>> leafMetadata;
     };
-    VSG_type_name(vsg::BVHIntersectionProxy)
+    VSG_type_name(vsg::BVHIntersectionProxy);
+
+    /** BypassIntersectionProxy wraps a subgraph to accelerate vsg::Intersector operations by sending them directly to the relevant descendent node */
+    class VSG_DECLSPEC BypassIntersectionProxy : public Inherit<IntersectionProxy, BypassIntersectionProxy>
+    {
+    public:
+        BypassIntersectionProxy(Node* in_original, Node* in_target);
+        BypassIntersectionProxy(const BypassIntersectionProxy& rhs, const CopyOp& copyop = {});
+
+        bool valid() const override;
+        void intersect(LineSegmentIntersector& lineSegmentIntersector) const override;
+
+    public:
+        ref_ptr<Object> clone(const CopyOp& copyop = {}) const override { return BypassIntersectionProxy::create(*this, copyop); }
+        int compare(const Object& rhs) const override;
+
+        void read(Input& input) override;
+        void write(Output& output) const override;
+
+    protected:
+        virtual ~BypassIntersectionProxy();
+
+        ref_ptr<Node> target;
+    };
+    VSG_type_name(vsg::BypassIntersectionProxy);
+
+    /** MultiBypassIntersectionProxy wraps a subgraph to accelerate vsg::Intersector operations by sending them directly to the relevant descendent nodes */
+    class VSG_DECLSPEC MultiBypassIntersectionProxy : public Inherit<IntersectionProxy, MultiBypassIntersectionProxy>
+    {
+    public:
+        struct Target
+        {
+            ref_ptr<const Node> node;
+            std::vector<ref_ptr<const Node>> nodePath;
+        };
+
+        MultiBypassIntersectionProxy(Node* in_original, std::vector<Target>&& in_targets = {});
+        MultiBypassIntersectionProxy(const MultiBypassIntersectionProxy& rhs, const CopyOp& copyop = {});
+
+        bool valid() const override;
+        void intersect(LineSegmentIntersector& lineSegmentIntersector) const override;
+
+    public:
+        ref_ptr<Object> clone(const CopyOp& copyop = {}) const override { return MultiBypassIntersectionProxy::create(*this, copyop); }
+        int compare(const Object& rhs) const override;
+
+        void read(Input& input) override;
+        void write(Output& output) const override;
+
+    protected:
+        virtual ~MultiBypassIntersectionProxy();
+
+        std::vector<Target> targets;
+    };
+    VSG_type_name(vsg::MultiBypassIntersectionProxy);
 
     class VSG_DECLSPEC IntersectionOptimizeVisitor : public Inherit<ReplacementVisitor, IntersectionOptimizeVisitor>
     {
     public:
+        using NodePath = std::vector<Node*>;
         using ArrayStateStack = std::vector<ref_ptr<ArrayState>>;
 
         IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState = {});
@@ -149,6 +204,8 @@ namespace vsg
 
     protected:
         ArrayStateStack arrayStateStack;
+        NodePath nodePath;
+        std::map<const Node*, std::vector<Node*>> intersectableDescendents;
     };
-    VSG_type_name(vsg::IntersectionOptimizeVisitor)
+    VSG_type_name(vsg::IntersectionOptimizeVisitor);
 } // namespace vsg
