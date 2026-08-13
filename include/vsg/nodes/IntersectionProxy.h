@@ -190,6 +190,11 @@ namespace vsg
     public:
         using NodePath = std::vector<Node*>;
         using ArrayStateStack = std::vector<ref_ptr<ArrayState>>;
+        struct IntersectableDescendant
+        {
+            Node* node;
+            NodePath nodePath;
+        };
 
         IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState = {});
 
@@ -205,7 +210,7 @@ namespace vsg
     protected:
         ArrayStateStack arrayStateStack;
         NodePath nodePath;
-        std::map<const Node*, std::vector<Node*>> intersectableDescendants;
+        std::map<const Node*, std::vector<IntersectableDescendant>> intersectableDescendants;
     };
     VSG_type_name(vsg::IntersectionOptimizeVisitor);
 } // namespace vsg
