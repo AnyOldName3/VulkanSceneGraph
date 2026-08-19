@@ -688,7 +688,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(StateGroup& st
 
     arrayStateStack.pop_back();
 
-    return std::nullopt;
+    return replacement;
 }
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& vertexDraw)
