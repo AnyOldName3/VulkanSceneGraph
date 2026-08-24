@@ -559,8 +559,17 @@ namespace
         void apply(const DrawIndexed&) override { bypassable = false; }
     };
 
-    std::optional<ref_ptr<IntersectionProxy>> createBypassFor(Node& node, const std::vector<IntersectionOptimizeVisitor::IntersectableDescendant>& intersectableDescendants)
+    std::optional<ref_ptr<IntersectionProxy>> createBypassFor(Node& node, const std::vector<IntersectionOptimizeVisitor::IntersectableDescendant>& intersectableDescendants, IntersectionOptimizeVisitor::BypassCostEstimator& bypassCostEstimator)
     {
+        bypassCostEstimator.pathCost = 0;
+        for (const auto& [_, path] : intersectableDescendants)
+        {
+            node.accept(bypassCostEstimator);
+            for (const auto* pathNode : path)
+                pathNode->accept(bypassCostEstimator);
+        }
+        if (bypassCostEstimator.pathCost < bypassCostEstimator.threshold) return std::nullopt;
+
         if (intersectableDescendants.size() > 1)
         {
             IntersectionOptimizeVisitor::NodePath commonPrefix;
@@ -605,7 +614,8 @@ namespace
     }
 }
 
-IntersectionOptimizeVisitor::IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState)
+IntersectionOptimizeVisitor::IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState, std::unique_ptr<BypassCostEstimator>&& in_bypassCostEstimator):
+    bypassCostEstimator(std::move(in_bypassCostEstimator))
 {
     arrayStateStack.reserve(4);
     arrayStateStack.emplace_back(initialArrayState ? initialArrayState : ArrayState::create());
@@ -652,7 +662,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Node& node)
         }
         else if (nodeNbd.bypassable)
         {
-            return createBypassFor(node, intersectableDescendants[&node]);
+            return createBypassFor(node, intersectableDescendants[&node], *bypassCostEstimator);
         }
     }
     else
@@ -661,7 +671,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Node& node)
 
         if (nodeNbd.bypassable)
         {
-            proxy = createBypassFor(node, intersectableDescendants[&node]);
+            proxy = createBypassFor(node, intersectableDescendants[&node], *bypassCostEstimator);
         }
 
         // We're finished with this scenegraph, get the visitor ready to process the next one

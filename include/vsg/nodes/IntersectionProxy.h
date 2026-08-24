@@ -196,7 +196,22 @@ namespace vsg
             NodePath nodePath;
         };
 
-        IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState = {});
+        // configure when bypass proxies are created
+        // applications with concerns other than intersection performance may prefer only especially expensive paths to be bypassed
+        struct BypassCostEstimator : public Inherit<ConstVisitor, BypassCostEstimator>
+        {
+            size_t pathCost = 0;
+            size_t threshold = 2;
+
+            void apply(const Node& node) override { pathCost += 1; }
+            void apply(const StateGroup& sg) override
+            {
+                // state groups are particularly expensive for the intersector to handle, so bypass any path with one by default
+                pathCost += threshold;
+            }
+        };
+
+        IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState = {}, std::unique_ptr<BypassCostEstimator>&& in_bypassCostEstimator = std::make_unique<BypassCostEstimator>());
 
         std::optional<ref_ptr<Object>> apply(Node& node) override;
 
@@ -211,6 +226,7 @@ namespace vsg
         ArrayStateStack arrayStateStack;
         NodePath nodePath;
         std::map<const Node*, std::vector<IntersectableDescendant>> intersectableDescendants;
+        std::unique_ptr<BypassCostEstimator> bypassCostEstimator;
     };
     VSG_type_name(vsg::IntersectionOptimizeVisitor);
 } // namespace vsg
