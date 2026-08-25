@@ -298,15 +298,9 @@ bool LineSegmentIntersector::intersects(const dsphere& bs)
 
     if (d < 0.0) return false;
 
-    d = sqrt(d);
-
-    double div = 1.0 / (2.0 * a);
-
-    double r1 = (-b - d) * div;
-    double r2 = (-b + d) * div;
-
-    if (r1 <= 0.0 && r2 <= 0.0) return false;
-    if (r1 >= 1.0 && r2 >= 1.0) return false;
+    if (d <= b * b && b >= 0.0) return false;
+    double twoAPlusB = 2.0 * a + b;
+    if (twoAPlusB <= 0.0 && twoAPlusB * twoAPlusB >= d) return false;
 
     // passed all the rejection tests so line must intersect bounding sphere, return true.
     return true;
