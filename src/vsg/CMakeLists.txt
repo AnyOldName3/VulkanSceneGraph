@@ -156,7 +156,6 @@ set(SOURCES
     io/read.cpp
     io/write.cpp
     io/mem_stream.cpp
-    io/ApplyVisitorReader.cpp
 
     text/CpuLayoutTechnique.cpp
     text/GpuLayoutTechnique.cpp
