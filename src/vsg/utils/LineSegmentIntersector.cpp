@@ -248,7 +248,7 @@ void LineSegmentIntersector::apply(const IntersectionProxy& intersectionProxy)
     {
         for (const auto& node : intersectionProxy.proxiedNodePath) _nodePath.push_back(node);
         intersectionProxy.intersect(*this);
-        for (const auto& node : intersectionProxy.proxiedNodePath) _nodePath.pop_back();
+        for (const auto& node [[maybe_unused]] : intersectionProxy.proxiedNodePath) _nodePath.pop_back();
     }
     else
     {

@@ -203,8 +203,8 @@ namespace vsg
             size_t pathCost = 0;
             size_t threshold = 2;
 
-            void apply(const Node& node) override { pathCost += 1; }
-            void apply(const StateGroup& sg) override
+            void apply(const Node&) override { pathCost += 1; }
+            void apply(const StateGroup&) override
             {
                 // state groups are particularly expensive for the intersector to handle, so bypass any path with one by default
                 pathCost += threshold;

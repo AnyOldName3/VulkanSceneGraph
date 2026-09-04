@@ -491,7 +491,7 @@ void MultiBypassIntersectionProxy::intersect(LineSegmentIntersector& lineSegment
     {
         for (const auto& node : target.nodePath) nodePath.push_back(node);
         target.node->accept(lineSegmentIntersector);
-        for (const auto& node : target.nodePath) nodePath.pop_back();
+        for (const auto& node [[maybe_unused]] : target.nodePath) nodePath.pop_back();
     }
 }
 
@@ -575,11 +575,11 @@ namespace
             IntersectionOptimizeVisitor::NodePath commonPrefix;
             for (size_t i = 0; i < intersectableDescendants.front().nodePath.size(); ++i)
             {
-                Node* node = intersectableDescendants.front().nodePath[i];
+                Node* descendant = intersectableDescendants.front().nodePath[i];
                 bool mismatch = false;
                 for (const auto& [_, path] : intersectableDescendants)
                 {
-                    if (path[i] != node)
+                    if (path[i] != descendant)
                     {
                         mismatch = true;
                         break;
@@ -588,7 +588,7 @@ namespace
 
                 if (mismatch) break;
 
-                commonPrefix.push_back(node);
+                commonPrefix.push_back(descendant);
             }
 
             std::vector<MultiBypassIntersectionProxy::Target> targets;
