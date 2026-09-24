@@ -38,11 +38,25 @@ namespace vsg
         virtual void reset(const dvec3& s, const dvec3& e, ref_ptr<ArrayState> initialArrayData = {});
         virtual void reset(const Camera& camera, int32_t x, int32_t y, ref_ptr<ArrayState> initialArrayData = {});
 
+        /// Computation of intersection features can be disabled to improve performance
+        enum FeatureMask
+        {
+            NONE = 0,
+            WORLD = 0x1 << 0,
+            NODE_PATH = 0x1 << 1,
+            ARRAYS = 0x1 << 2,
+            INDEX_RATIOS = 0x1 << 3,
+
+            ALL = WORLD | NODE_PATH | ARRAYS | INDEX_RATIOS
+        };
+
+        FeatureMask featureMask = ALL;
+
         class VSG_DECLSPEC Intersection
         {
         public:
             Intersection() {}
-            Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, const NodePath& in_nodePath, DataList&& in_arrays, const IndexRatios& in_indexRatios, uint32_t in_instanceIndex);
+            Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, NodePath&& in_nodePath, DataList&& in_arrays, IndexRatios&& in_indexRatios, uint32_t in_instanceIndex);
 
             dvec3 localIntersection;
             dvec3 worldIntersection;
@@ -53,16 +67,13 @@ namespace vsg
             DataList arrays;
             IndexRatios indexRatios;
             uint32_t instanceIndex = 0;
-
-            // return true if Intersection is valid
-            operator bool() const { return !nodePath.empty(); }
         };
 
         using Intersections = std::vector<Intersection>;
         Intersections intersections;
 
-        Intersection& add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex);
-        Intersection& add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex, DataList&& arrays);
+        Intersection& add(const dvec3& coord, double ratio, IndexRatios&& indexRatios, uint32_t instanceIndex);
+        Intersection& add(const dvec3& coord, double ratio, IndexRatios&& indexRatios, uint32_t instanceIndex, DataList&& arrays);
 
         using Intersector::apply;
 

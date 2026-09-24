@@ -358,11 +358,17 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
             value_type r2 = v2 * inv_det;
             value_type r0 = 1.0 - r1 - r2;
 
+            const auto featureMask = lineSegmentIntersector.featureMask;
+
             dvec3 intersection = dvec3(triangle.vertex0) * double(r0 + r1 + r2) + dvec3(triangle.edge1) * double(r1) + dvec3(triangle.edge2) * double(r2);
             const auto& metadata = leafMetadata[index].tris[i];
             GetArrays arrayGetter;
-            original->accept(arrayGetter);
-            lineSegmentIntersector.add(intersection, double(t2 * inv_det * inverseLength), {{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}}, metadata.instance, std::move(arrayGetter.arrays));
+            if (featureMask & LineSegmentIntersector::ARRAYS)
+            {
+                original->accept(arrayGetter);
+            }
+            auto indexRatios = (featureMask & LineSegmentIntersector::INDEX_RATIOS) ? IndexRatios{{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}} : IndexRatios();
+            lineSegmentIntersector.add(intersection, double(t2 * inv_det * inverseLength), std::move(indexRatios), metadata.instance, std::move(arrayGetter.arrays));
         }
     };
 

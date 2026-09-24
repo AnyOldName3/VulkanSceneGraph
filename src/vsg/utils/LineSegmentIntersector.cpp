@@ -37,6 +37,8 @@ struct TriangleIntersector
     LineSegmentIntersector& intersector;
     ref_ptr<const vec3Array> vertices;
 
+    using FeatureMask = LineSegmentIntersector::FeatureMask;
+
     TriangleIntersector(LineSegmentIntersector& in_intersector, const dvec3& in_start, const dvec3& in_end, ref_ptr<const vec3Array> in_vertices) :
         start(in_start),
         end(in_end),
@@ -123,8 +125,11 @@ struct TriangleIntersector
             return false;
         }
 
+        const FeatureMask& featureMask = intersector.featureMask;
+
         dvec3 intersection = dvec3(dvec3(v0) * double(r0) + dvec3(v1) * double(r1) + dvec3(v2) * double(r2));
-        intersector.add(intersection, double(r), {{i0, r0}, {i1, r1}, {i2, r2}}, instanceIndex);
+        auto indexRatios = (featureMask & FeatureMask::INDEX_RATIOS) ? IndexRatios{{i0, r0}, {i1, r1}, {i2, r2}} : IndexRatios();
+        intersector.add(intersection, double(r), std::move(indexRatios), instanceIndex);
 
         return true;
     }
@@ -214,30 +219,33 @@ void LineSegmentIntersector::reset(const Camera& camera, int32_t x, int32_t y, r
     _lineSegmentStack.back() = LineSegment{eyeToWorld * eye_near, eyeToWorld * eye_far};
 }
 
-LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, const NodePath& in_nodePath, DataList&& in_arrays, const IndexRatios& in_indexRatios, uint32_t in_instanceIndex) :
+LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersection, const dvec3& in_worldIntersection, double in_ratio, const dmat4& in_localToWorld, NodePath&& in_nodePath, DataList&& in_arrays, IndexRatios&& in_indexRatios, uint32_t in_instanceIndex) :
     localIntersection(in_localIntersection),
     worldIntersection(in_worldIntersection),
     ratio(in_ratio),
     localToWorld(in_localToWorld),
-    nodePath(in_nodePath),
+    nodePath(std::move(in_nodePath)),
     arrays(std::move(in_arrays)),
-    indexRatios(in_indexRatios),
+    indexRatios(std::move(in_indexRatios)),
     instanceIndex(in_instanceIndex)
 {
 }
 
-LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex)
+LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, IndexRatios&& indexRatios, uint32_t instanceIndex)
 {
     const auto& localToWorld = localToWorldStack().empty() ? dmat4() : localToWorldStack().back();
-    intersections.emplace_back(coord, localToWorld * coord, ratio, localToWorld, _nodePath, DataList(arrayStateStack.back()->arrays.begin(), arrayStateStack.back()->arrays.end()), indexRatios, instanceIndex);
+    NodePath nodePath = (featureMask & NODE_PATH) ? NodePath(_nodePath) : NodePath();
+    DataList arrays = (featureMask & ARRAYS) ? DataList(arrayStateStack.back()->arrays.begin(), arrayStateStack.back()->arrays.end()) : DataList();
+    intersections.emplace_back(coord, featureMask & WORLD ? localToWorld * coord : dvec3(), ratio, localToWorld, std::move(nodePath), std::move(arrays), std::move(indexRatios), instanceIndex);
 
     return intersections.back();
 }
 
-LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, const IndexRatios& indexRatios, uint32_t instanceIndex, DataList&& arrays)
+LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, IndexRatios&& indexRatios, uint32_t instanceIndex, DataList&& arrays)
 {
     const auto& localToWorld = localToWorldStack().empty() ? dmat4() : localToWorldStack().back();
-    intersections.emplace_back(coord, localToWorld * coord, ratio, localToWorld, _nodePath, std::move(arrays), indexRatios, instanceIndex);
+    NodePath nodePath = (featureMask & NODE_PATH) ? NodePath(_nodePath) : NodePath();
+    intersections.emplace_back(coord, featureMask & WORLD ? localToWorld * coord : dvec3(), ratio, localToWorld, std::move(nodePath), std::move(arrays), std::move(indexRatios), instanceIndex);
 
     return intersections.back();
 }
