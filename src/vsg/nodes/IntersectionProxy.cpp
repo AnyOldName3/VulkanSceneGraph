@@ -243,7 +243,8 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
     using itr_t = decltype(indices)::iterator;
 
     auto computeKDTree = [&](itr_t first, itr_t last, auto&& computeKDTreeRecursive) -> std::pair<box, NodeRef> {
-        if (static_cast<size_t>(std::distance(first, last)) <= trisPerLeaf)
+        size_t triCount = static_cast<size_t>(std::distance(first, last));
+        if (triCount <= trisPerLeaf)
         {
             leaves.emplace_back();
             leafMetadata.emplace_back();
@@ -276,8 +277,59 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
                 baryBound.add(barycenters[*itr]);
             }
             vec3 range = baryBound.max - baryBound.min;
-            size_t axisIndex = range.x > range.y ? (range.x > range.z ? 0 : 2) : (range.y > range.z ? 1 : 2);
-            itr_t midpoint = first + (((std::distance(first, last) + trisPerLeaf - 1) / 2) / trisPerLeaf) * trisPerLeaf;
+            size_t axisIndex = 0;
+            itr_t midpoint = first + (((triCount + trisPerLeaf - 1) / 2) / trisPerLeaf) * trisPerLeaf;
+
+            float best = std::numeric_limits<float>::infinity();
+
+            for (size_t trialAxis = 0; trialAxis < 3; ++trialAxis)
+            {
+                constexpr size_t binCount = 128;
+                std::array<box, binCount> binBounds{};
+                std::array<uint32_t, binCount> binSizes{};
+                float binScale = binCount / range[trialAxis];
+                for (itr_t itr = first; itr != last; ++itr)
+                {
+                    size_t binIndex = std::min(binCount - 1, static_cast<size_t>((barycenters[*itr][trialAxis] - baryBound.min[trialAxis]) * binScale));
+                    ++binSizes[binIndex];
+                    binBounds[binIndex].add(triangles[*itr].vertex0);
+                    binBounds[binIndex].add(triangles[*itr].vertex0 + triangles[*itr].edge1);
+                    binBounds[binIndex].add(triangles[*itr].vertex0 + triangles[*itr].edge2);
+                }
+                box boundAccumulator;
+                uint32_t sizeAccumulator = 0;
+                std::array<float, binCount> leftAreas{};
+                std::array<uint32_t, binCount> leftSizes{};
+                for (size_t i = 0; i < binCount; ++i)
+                {
+                    sizeAccumulator += binSizes[i];
+                    leftSizes[i] = sizeAccumulator;
+                    boundAccumulator.add(binBounds[i]);
+                    leftAreas[i] = boundAccumulator.surfaceArea();
+                }
+                boundAccumulator.reset();
+                std::array<float, binCount> rightAreas{};
+                for (size_t i = binCount; i > 0; --i)
+                {
+                    boundAccumulator.add(binBounds[i - 1]);
+                    rightAreas[i - 1] = boundAccumulator.surfaceArea();
+                }
+                binScale = range[trialAxis] / binCount;
+                for (size_t i = 0; i < binCount; ++i)
+                {
+                    // we always pay the full cost of a leaf
+                    size_t effectiveLeft = ((leftSizes[i] + trisPerLeaf - 1) / trisPerLeaf) * trisPerLeaf;
+                    size_t effectiveRight = (((triCount - leftSizes[i]) + trisPerLeaf - 1) / trisPerLeaf) * trisPerLeaf;
+                    float surfaceHeuristic = effectiveLeft * leftAreas[i] + effectiveRight * rightAreas[i];
+                    if (leftSizes[i] > 0 && leftSizes[i] < triCount && surfaceHeuristic < best)
+                    {
+                        best = surfaceHeuristic;
+                        axisIndex = trialAxis;
+                        midpoint = first + leftSizes[i];
+                    }
+                }
+            }
+
             std::nth_element(first, midpoint, last, [&, axisIndex](const size_t& lhs, const size_t& rhs) { return barycenters[lhs][axisIndex] < barycenters[rhs][axisIndex]; });
             internalNodes.emplace_back(InternalNode{{{computeKDTreeRecursive(first, midpoint, computeKDTreeRecursive), computeKDTreeRecursive(midpoint, last, computeKDTreeRecursive)}}});
             box overallBound;

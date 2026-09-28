@@ -86,6 +86,18 @@ namespace vsg
             if (bb.max.y > max.y) max.y = bb.max.y;
             if (bb.max.z > max.z) max.z = bb.max.z;
         }
+
+        value_type volume()
+        {
+            auto size = max - min;
+            return size.x * size.y * size.z;
+        }
+
+        value_type surfaceArea()
+        {
+            auto size = max - min;
+            return 2 * (size.x * size.y + size.x * size.z + size.y * size.z);
+        }
     };
 
     using box = t_box<float>;         /// float box class
