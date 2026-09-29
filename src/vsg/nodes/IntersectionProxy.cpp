@@ -382,9 +382,6 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
     if (!bounds.valid() || !intersectBox(bounds))
         return;
 
-    value_type length = ::length(d);
-    value_type inverseLength = length != 0.0 ? 1.0 / length : 0.0;
-
     auto intersectLeaf = [&](uint32_t index) {
         for (size_t i = 0; i < trisPerLeaf; ++i)
         {
@@ -420,7 +417,7 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
                 original->accept(arrayGetter);
             }
             auto indexRatios = (featureMask & LineSegmentIntersector::INDEX_RATIOS) ? IndexRatios{{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}} : IndexRatios();
-            lineSegmentIntersector.add(intersection, double(t2 * inv_det * inverseLength), std::move(indexRatios), metadata.instance, std::move(arrayGetter.arrays));
+            lineSegmentIntersector.add(intersection, double(t2 * inv_det), std::move(indexRatios), metadata.instance, std::move(arrayGetter.arrays));
         }
     };
 
