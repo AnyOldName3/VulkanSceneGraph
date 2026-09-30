@@ -352,6 +352,7 @@ bool BVHIntersectionProxy::valid() const
 void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentIntersector) const
 {
     const auto& ls = lineSegmentIntersector.lineSegment();
+    const double& maxRatio = lineSegmentIntersector.maxRatio();
 
     using value_type = double;
     using vec_type = t_vec3<value_type>;
@@ -376,7 +377,7 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
         t2 = (bound.max.z - start.z) * inv_d.z;
         tmin = std::max(tmin, std::min(t1, t2));
         tmax = std::min(tmax, std::max(t1, t2));
-        return tmax >= tmin && tmin < 1.0 && tmax > 0.0;
+        return tmax >= tmin && tmin < maxRatio && tmax > 0.0;
     };
 
     if (!bounds.valid() || !intersectBox(bounds))
@@ -403,6 +404,9 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
             if (std::abs(t2) < std::abs(epsilon * det)) continue;
 
             value_type inv_det = 1.0 / det;
+
+            if (t2 * inv_det > maxRatio) continue;
+
             value_type r1 = u2 * inv_det;
             value_type r2 = v2 * inv_det;
             value_type r0 = 1.0 - r1 - r2;

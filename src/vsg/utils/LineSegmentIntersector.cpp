@@ -136,13 +136,15 @@ struct TriangleIntersector
 };
 
 LineSegmentIntersector::LineSegmentIntersector(const dvec3& s, const dvec3& e, ref_ptr<ArrayState> initialArrayData) :
-    Inherit(initialArrayData)
+    Inherit(initialArrayData),
+    _maxRatio(1.0)
 {
     _lineSegmentStack.push_back(LineSegment{s, e});
 }
 
 LineSegmentIntersector::LineSegmentIntersector(const Camera& camera, int32_t x, int32_t y, ref_ptr<ArrayState> initialArrayData) :
-    Inherit(initialArrayData)
+    Inherit(initialArrayData),
+    _maxRatio(1.0)
 {
     auto viewport = camera.getViewport();
 
@@ -176,6 +178,7 @@ void LineSegmentIntersector::reset(ref_ptr<ArrayState> initialArrayData)
     Intersector::reset(initialArrayData);
 
     intersections.clear();
+    _maxRatio = 1.0;
 }
 
 void LineSegmentIntersector::reset(const dvec3& s, const dvec3& e, ref_ptr<ArrayState> initialArrayData)
@@ -233,6 +236,14 @@ LineSegmentIntersector::Intersection::Intersection(const dvec3& in_localIntersec
 
 LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, IndexRatios&& indexRatios, uint32_t instanceIndex)
 {
+    if (!(featureMask & INTERSECTIONS_AFTER_FIRST))
+    {
+        if (ratio > _maxRatio) return intersections.back();
+
+        _maxRatio = ratio;
+        intersections.clear();
+    }
+
     const auto& localToWorld = localToWorldStack().empty() ? dmat4() : localToWorldStack().back();
     NodePath nodePath = (featureMask & NODE_PATH) ? NodePath(_nodePath) : NodePath();
     DataList arrays = (featureMask & ARRAYS) ? DataList(arrayStateStack.back()->arrays.begin(), arrayStateStack.back()->arrays.end()) : DataList();
@@ -243,6 +254,14 @@ LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& c
 
 LineSegmentIntersector::Intersection& LineSegmentIntersector::add(const dvec3& coord, double ratio, IndexRatios&& indexRatios, uint32_t instanceIndex, DataList&& arrays)
 {
+    if (!(featureMask & INTERSECTIONS_AFTER_FIRST))
+    {
+        if (ratio > _maxRatio) return intersections.back();
+
+        _maxRatio = ratio;
+        intersections.clear();
+    }
+
     const auto& localToWorld = localToWorldStack().empty() ? dmat4() : localToWorldStack().back();
     NodePath nodePath = (featureMask & NODE_PATH) ? NodePath(_nodePath) : NodePath();
     intersections.emplace_back(coord, featureMask & WORLD ? localToWorld * coord : dvec3(), ratio, localToWorld, std::move(nodePath), std::move(arrays), std::move(indexRatios), instanceIndex);

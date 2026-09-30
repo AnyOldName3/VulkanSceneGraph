@@ -46,8 +46,9 @@ namespace vsg
             NODE_PATH = 0x1 << 1,
             ARRAYS = 0x1 << 2,
             INDEX_RATIOS = 0x1 << 3,
+            INTERSECTIONS_AFTER_FIRST = 0x1 << 4,
 
-            ALL = WORLD | NODE_PATH | ARRAYS | INDEX_RATIOS
+            ALL = WORLD | NODE_PATH | ARRAYS | INDEX_RATIOS | INTERSECTIONS_AFTER_FIRST
         };
 
         FeatureMask featureMask = ALL;
@@ -95,10 +96,12 @@ namespace vsg
         };
 
         const LineSegment& lineSegment() { return _lineSegmentStack.back(); }
+        const double& maxRatio() { return _maxRatio; }
 
     protected:
 
         std::vector<LineSegment> _lineSegmentStack;
+        double _maxRatio;
     };
     VSG_type_name(vsg::LineSegmentIntersector);
 
