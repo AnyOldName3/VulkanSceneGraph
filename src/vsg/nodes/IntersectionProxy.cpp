@@ -145,6 +145,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
 {
     leaves.clear();
     internalNodes.clear();
+    bounds.reset();
 
     if (!original)
     {
@@ -222,7 +223,6 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
         return;
     }
 
-    bounds.reset();
     std::vector<vec3> barycenters;
     barycenters.reserve(inputTriangles.size());
     for (const auto& triangle : inputTriangles)
