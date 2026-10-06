@@ -141,7 +141,7 @@ BVHIntersectionProxy::BVHIntersectionProxy(const BVHIntersectionProxy& rhs, cons
 {
 }
 
-void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
+void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t minLeafSize)
 {
     leaves.clear();
     internalNodes.clear();
@@ -153,7 +153,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
     }
 
     // if instancing is used, accessing the nth triangle is a hassle, so grab them upfront
-    std::vector<Triangle> triangles;
+    std::vector<Triangle> inputTriangles;
     std::vector<TriangleMetadata> metadata;
 
     if (auto* vertexDraw = ::cast<VertexDraw>(original))
@@ -163,8 +163,8 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
         uint32_t lastIndex = vertexDraw->instanceCount > 1 ? (vertexDraw->firstInstance + vertexDraw->instanceCount) : vertexDraw->firstInstance + 1;
         uint32_t endVertex = vertexDraw->firstVertex + vertexDraw->vertexCount;
 
-        triangles.reserve(vertexDraw->instanceCount * vertexDraw->vertexCount / 3);
-        metadata.reserve(triangles.size());
+        inputTriangles.reserve(vertexDraw->instanceCount * vertexDraw->vertexCount / 3);
+        metadata.reserve(inputTriangles.size());
 
         for (uint32_t instanceIndex = vertexDraw->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
@@ -172,7 +172,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
             {
                 for (uint32_t i = vertexDraw->firstVertex; (i + 2) < endVertex; i += 3)
                 {
-                    triangles.emplace_back(Triangle{
+                    inputTriangles.emplace_back(Triangle{
                         vertices->at(i),
                         vertices->at(i + 1) - vertices->at(i),
                         vertices->at(i + 2) - vertices->at(i)
@@ -189,8 +189,8 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
         uint32_t lastIndex = vertexIndexDraw->instanceCount > 1 ? (vertexIndexDraw->firstInstance + vertexIndexDraw->instanceCount) : vertexIndexDraw->firstInstance + 1;
         uint32_t endIndex = vertexIndexDraw->firstIndex + ((vertexIndexDraw->indexCount + 2) / 3) * 3;
 
-        triangles.reserve(vertexIndexDraw->instanceCount * vertexIndexDraw->indexCount / 3);
-        metadata.reserve(triangles.size());
+        inputTriangles.reserve(vertexIndexDraw->instanceCount * vertexIndexDraw->indexCount / 3);
+        metadata.reserve(inputTriangles.size());
 
         if (!vertexIndexDraw->indices || !vertexIndexDraw->indices->data)
         {
@@ -207,11 +207,10 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
             {
                 for (uint32_t i = vertexIndexDraw->firstIndex; i < endIndex; i += 3)
                 {
-                    triangles.emplace_back(Triangle{
+                    inputTriangles.emplace_back(Triangle{
                         vertices->at(indices[i]),
                         vertices->at(indices[i + 1]) - vertices->at(indices[i]),
-                        vertices->at(indices[i + 2]) - vertices->at(indices[i])
-                    });
+                        vertices->at(indices[i + 2]) - vertices->at(indices[i])});
                     metadata.emplace_back(TriangleMetadata{indices[i], indices[i + 1], indices[i + 2], instanceIndex});
                 }
             }
@@ -223,53 +222,35 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
         return;
     }
 
+    bounds.reset();
     std::vector<vec3> barycenters;
-    barycenters.reserve(triangles.size());
-    for (const auto& triangle : triangles)
+    barycenters.reserve(inputTriangles.size());
+    for (const auto& triangle : inputTriangles)
     {
         barycenters.emplace_back(triangle.vertex0 + (triangle.edge1 + triangle.edge2) / 3.f);
+        bounds.add(triangle.vertex0);
+        bounds.add(triangle.vertex0 + triangle.edge1);
+        bounds.add(triangle.vertex0 + triangle.edge2);
     }
 
     std::vector<size_t> indices;
-    indices.reserve(triangles.size());
-    for (size_t i = 0; i < triangles.size(); ++i)
+    indices.reserve(inputTriangles.size());
+    for (size_t i = 0; i < inputTriangles.size(); ++i)
     {
         indices.emplace_back(i);
     }
 
-    leaves.reserve(triangles.size() / trisPerLeaf);
-    internalNodes.reserve(triangles.size() / (trisPerLeaf * 2));
+    leaves.reserve(inputTriangles.size() / minLeafSize);
+    internalNodes.reserve(inputTriangles.size() / (minLeafSize * 2));
+    triangles.reserve(inputTriangles.size());
+    triangleMetadata.reserve(inputTriangles.size());
 
     using itr_t = decltype(indices)::iterator;
 
-    auto computeKDTree = [&](itr_t first, itr_t last, auto&& computeKDTreeRecursive) -> std::pair<box, NodeRef> {
+    auto computeKDTree = [&](itr_t first, itr_t last, float parentSAH, auto&& computeKDTreeRecursive) -> NodeRef {
         size_t triCount = static_cast<size_t>(std::distance(first, last));
-        if (triCount <= trisPerLeaf)
-        {
-            leaves.emplace_back();
-            leafMetadata.emplace_back();
-            box bound;
-            itr_t itr = first;
-            for (size_t i = 0; i < trisPerLeaf; ++i)
-            {
-                if (itr != last)
-                {
-                    leaves.back().tris[i] = triangles[*itr];
-                    bound.add(triangles[*itr].vertex0);
-                    bound.add(triangles[*itr].vertex0 + triangles[*itr].edge1);
-                    bound.add(triangles[*itr].vertex0 + triangles[*itr].edge2);
-                    leafMetadata.back().tris[i] = metadata[*itr];
-                    ++itr;
-                }
-                else
-                {
-                    // add a degenerate triangle as we have to have trisPerLeaf
-                    leaves.back().tris[i] = {vec3(), vec3(), vec3()};
-                }
-            }
-            return std::make_pair(bound, NodeRef{NodeRef::LEAF, static_cast<uint32_t>(leaves.size() - 1)});
-        }
-        else
+
+        if (triCount > minLeafSize)
         {
             box baryBound;
             for (itr_t itr = first; itr != last; ++itr)
@@ -278,9 +259,11 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
             }
             vec3 range = baryBound.max - baryBound.min;
             size_t axisIndex = 0;
-            itr_t midpoint = first + (((triCount + trisPerLeaf - 1) / 2) / trisPerLeaf) * trisPerLeaf;
+            itr_t midpoint;
 
             float best = std::numeric_limits<float>::infinity();
+
+            box leftBound, rightBound;
 
             for (size_t trialAxis = 0; trialAxis < 3; ++trialAxis)
             {
@@ -292,9 +275,9 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
                 {
                     size_t binIndex = std::min(binCount - 1, static_cast<size_t>((barycenters[*itr][trialAxis] - baryBound.min[trialAxis]) * binScale));
                     ++binSizes[binIndex];
-                    binBounds[binIndex].add(triangles[*itr].vertex0);
-                    binBounds[binIndex].add(triangles[*itr].vertex0 + triangles[*itr].edge1);
-                    binBounds[binIndex].add(triangles[*itr].vertex0 + triangles[*itr].edge2);
+                    binBounds[binIndex].add(inputTriangles[*itr].vertex0);
+                    binBounds[binIndex].add(inputTriangles[*itr].vertex0 + inputTriangles[*itr].edge1);
+                    binBounds[binIndex].add(inputTriangles[*itr].vertex0 + inputTriangles[*itr].edge2);
                 }
                 box boundAccumulator;
                 uint32_t sizeAccumulator = 0;
@@ -317,31 +300,44 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState)
                 binScale = range[trialAxis] / binCount;
                 for (size_t i = 0; i < binCount; ++i)
                 {
-                    // we always pay the full cost of a leaf
-                    size_t effectiveLeft = ((leftSizes[i] + trisPerLeaf - 1) / trisPerLeaf) * trisPerLeaf;
-                    size_t effectiveRight = (((triCount - leftSizes[i]) + trisPerLeaf - 1) / trisPerLeaf) * trisPerLeaf;
-                    float surfaceHeuristic = effectiveLeft * leftAreas[i] + effectiveRight * rightAreas[i];
+                    float surfaceHeuristic = leftSizes[i] * leftAreas[i] + (triCount - leftSizes[i]) * rightAreas[i];
                     if (leftSizes[i] > 0 && leftSizes[i] < triCount && surfaceHeuristic < best)
                     {
                         best = surfaceHeuristic;
                         axisIndex = trialAxis;
                         midpoint = first + leftSizes[i];
+
+                        leftBound.reset();
+                        rightBound.reset();
+                        for (size_t j = 0; j < binCount; ++j)
+                        {
+                            if (j <= i)
+                                leftBound.add(binBounds[j]);
+                            else
+                                rightBound.add(binBounds[j]);
+                        }
                     }
                 }
             }
 
-            std::nth_element(first, midpoint, last, [&, axisIndex](const size_t& lhs, const size_t& rhs) { return barycenters[lhs][axisIndex] < barycenters[rhs][axisIndex]; });
-            internalNodes.emplace_back(InternalNode{{{computeKDTreeRecursive(first, midpoint, computeKDTreeRecursive), computeKDTreeRecursive(midpoint, last, computeKDTreeRecursive)}}});
-            box overallBound;
-            for (const auto& [bound, ref] : internalNodes.back().children)
+            if (best < parentSAH)
             {
-                overallBound.add(bound);
+                std::nth_element(first, midpoint, last, [&, axisIndex](const size_t& lhs, const size_t& rhs) { return barycenters[lhs][axisIndex] < barycenters[rhs][axisIndex]; });
+                internalNodes.emplace_back(InternalNode{{{{leftBound, computeKDTreeRecursive(first, midpoint, best, computeKDTreeRecursive)}, {rightBound, computeKDTreeRecursive(midpoint, last, best, computeKDTreeRecursive)}}}});
+                return NodeRef{NodeRef::INTERNAL, static_cast<uint32_t>(internalNodes.size() - 1)};
             }
-            return std::make_pair(overallBound, NodeRef{NodeRef::INTERNAL, static_cast<uint32_t>(internalNodes.size() - 1)});
         }
+
+        leaves.emplace_back(Leaf{static_cast<uint32_t>(triangles.size()), static_cast<uint32_t>(triangles.size() + triCount)});
+        for (itr_t itr = first; itr != last; ++itr)
+        {
+            triangles.emplace_back(inputTriangles[*itr]);
+            triangleMetadata.emplace_back(metadata[*itr]);
+        }
+        return NodeRef{NodeRef::LEAF, static_cast<uint32_t>(leaves.size() - 1)};
     };
 
-    std::tie(bounds, boundingVolumeHeirarchy) = computeKDTree(indices.begin(), indices.end(), computeKDTree);
+    boundingVolumeHeirarchy = computeKDTree(indices.begin(), indices.end(), bounds.surfaceArea() * inputTriangles.size(), computeKDTree);
 }
 
 bool BVHIntersectionProxy::valid() const
@@ -384,9 +380,9 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
         return;
 
     auto intersectLeaf = [&](uint32_t index) {
-        for (size_t i = 0; i < trisPerLeaf; ++i)
+        for (size_t i = leaves[index].begin; i < leaves[index].end; ++i)
         {
-            const auto& triangle = leaves[index].tris[i];
+            const auto& triangle = triangles[i];
 
             vec_type P = cross(d, vec_type(triangle.edge2));
             value_type det = dot(P, vec_type(triangle.edge1));
@@ -414,7 +410,7 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
             const auto featureMask = lineSegmentIntersector.featureMask;
 
             dvec3 intersection = dvec3(triangle.vertex0) * double(r0 + r1 + r2) + dvec3(triangle.edge1) * double(r1) + dvec3(triangle.edge2) * double(r2);
-            const auto& metadata = leafMetadata[index].tris[i];
+            const auto& metadata = triangleMetadata[i];
             GetArrays arrayGetter;
             if (featureMask & LineSegmentIntersector::ARRAYS)
             {
@@ -763,7 +759,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(StateGroup& st
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& vertexDraw)
 {
     auto optimized = BVHIntersectionProxy::create(&vertexDraw);
-    optimized->rebuild(*arrayStateStack.back());
+    optimized->rebuild(*arrayStateStack.back(), minLeafSize);
 
     if (!nodePath.empty())
     {
@@ -775,7 +771,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& ve
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDraw& vertexIndexDraw)
 {
     auto optimized = BVHIntersectionProxy::create(&vertexIndexDraw);
-    optimized->rebuild(*arrayStateStack.back());
+    optimized->rebuild(*arrayStateStack.back(), minLeafSize);
 
     if (!nodePath.empty())
     {

@@ -67,7 +67,7 @@ namespace vsg
         BVHIntersectionProxy(Node* in_original);
         BVHIntersectionProxy(const BVHIntersectionProxy& rhs, const CopyOp& copyop = {});
 
-        void rebuild(ArrayState& arrayState);
+        void rebuild(ArrayState& arrayState, uint32_t minLeafSize);
 
         bool valid() const override;
 
@@ -89,10 +89,10 @@ namespace vsg
             vec3 edge1;
             vec3 edge2;
         };
-        static constexpr size_t trisPerLeaf = 4;
         struct Leaf
         {
-            std::array<Triangle, trisPerLeaf> tris;
+            uint32_t begin;
+            uint32_t end;
         };
         struct NodeRef
         {
@@ -112,6 +112,7 @@ namespace vsg
 
         std::vector<InternalNode, allocator_affinity_data<InternalNode>> internalNodes;
         std::vector<Leaf, allocator_affinity_data<Leaf>> leaves;
+        std::vector<Triangle, allocator_affinity_data<Triangle>> triangles;
         box bounds;
         NodeRef boundingVolumeHeirarchy;
 
@@ -122,12 +123,8 @@ namespace vsg
             uint32_t index2;
             uint32_t instance;
         };
-        struct LeafMetadata
-        {
-            std::array<TriangleMetadata, trisPerLeaf> tris;
-        };
 
-        std::vector<LeafMetadata, allocator_affinity_data<LeafMetadata>> leafMetadata;
+        std::vector<TriangleMetadata, allocator_affinity_data<TriangleMetadata>> triangleMetadata;
     };
     VSG_type_name(vsg::BVHIntersectionProxy);
 
@@ -210,6 +207,7 @@ namespace vsg
                 pathCost += threshold;
             }
         };
+        uint32_t minLeafSize = 4;
 
         IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState = {}, std::unique_ptr<BypassCostEstimator>&& in_bypassCostEstimator = std::make_unique<BypassCostEstimator>());
 
