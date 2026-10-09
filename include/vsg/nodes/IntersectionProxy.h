@@ -89,21 +89,11 @@ namespace vsg
             vec3 edge1;
             vec3 edge2;
         };
-        struct Leaf
-        {
-            uint32_t begin;
-            uint32_t end;
-        };
         struct NodeRef
         {
-            enum NodeType
-            {
-                LEAF,
-                INTERNAL,
-                INVALID
-            };
-            NodeType type;
-            uint32_t index;
+            static constexpr uint32_t INTERNAL = 0xFFFFFFFF;
+            uint32_t typeOrBegin;
+            uint32_t indexOrEnd;
         };
         struct InternalNode
         {
@@ -111,7 +101,6 @@ namespace vsg
         };
 
         std::vector<InternalNode, allocator_affinity_data<InternalNode>> internalNodes;
-        std::vector<Leaf, allocator_affinity_data<Leaf>> leaves;
         std::vector<Triangle, allocator_affinity_data<Triangle>> triangles;
         box bounds;
         NodeRef boundingVolumeHeirarchy;

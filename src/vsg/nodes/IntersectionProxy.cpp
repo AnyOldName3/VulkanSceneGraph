@@ -126,16 +126,14 @@ namespace
 BVHIntersectionProxy::BVHIntersectionProxy(Node* in_original) :
     Inherit(in_original),
     internalNodes(),
-    leaves(),
     bounds(),
-    boundingVolumeHeirarchy({NodeRef::INVALID, 0u})
+    boundingVolumeHeirarchy(NodeRef{0u, 0u})
 {
 }
 
 BVHIntersectionProxy::BVHIntersectionProxy(const BVHIntersectionProxy& rhs, const CopyOp& copyop) :
     Inherit(rhs, copyop),
     internalNodes(rhs.internalNodes),
-    leaves(rhs.leaves),
     bounds(rhs.bounds),
     boundingVolumeHeirarchy(rhs.boundingVolumeHeirarchy)
 {
@@ -143,7 +141,6 @@ BVHIntersectionProxy::BVHIntersectionProxy(const BVHIntersectionProxy& rhs, cons
 
 void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t minLeafSize)
 {
-    leaves.clear();
     internalNodes.clear();
     bounds.reset();
 
@@ -223,6 +220,12 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
         return;
     }
 
+    if (inputTriangles.size() >= NodeRef::INTERNAL)
+    {
+        warn("Too many triangles to create BVHIntersectionProxy.");
+        return;
+    }
+
     std::vector<vec3> barycenters;
     barycenters.reserve(inputTriangles.size());
     for (const auto& triangle : inputTriangles)
@@ -240,7 +243,6 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
         indices.emplace_back(i);
     }
 
-    leaves.reserve(inputTriangles.size() / minLeafSize);
     internalNodes.reserve(inputTriangles.size() / (minLeafSize * 2));
     triangles.reserve(inputTriangles.size());
     triangleMetadata.reserve(inputTriangles.size());
@@ -328,13 +330,13 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
             }
         }
 
-        leaves.emplace_back(Leaf{static_cast<uint32_t>(triangles.size()), static_cast<uint32_t>(triangles.size() + triCount)});
+        size_t oldSize = triangles.size();
         for (itr_t itr = first; itr != last; ++itr)
         {
             triangles.emplace_back(inputTriangles[*itr]);
             triangleMetadata.emplace_back(metadata[*itr]);
         }
-        return NodeRef{NodeRef::LEAF, static_cast<uint32_t>(leaves.size() - 1)};
+        return NodeRef{static_cast<uint32_t>(oldSize), static_cast<uint32_t>(oldSize + triCount)};
     };
 
     boundingVolumeHeirarchy = computeKDTree(indices.begin(), indices.end(), bounds.surfaceArea() * inputTriangles.size(), computeKDTree);
@@ -342,7 +344,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
 
 bool BVHIntersectionProxy::valid() const
 {
-    return boundingVolumeHeirarchy.type != NodeRef::INVALID;
+    return bounds.valid();
 }
 
 void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentIntersector) const
@@ -379,8 +381,8 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
     if (!bounds.valid() || !intersectBox(bounds))
         return;
 
-    auto intersectLeaf = [&](uint32_t index) {
-        for (size_t i = leaves[index].begin; i < leaves[index].end; ++i)
+    auto intersectLeaf = [&](uint32_t begin, uint32_t end) {
+        for (size_t i = begin; i < end; ++i)
         {
             const auto& triangle = triangles[i];
 
@@ -422,13 +424,9 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
     };
 
     auto intersectNode = [&](const NodeRef& nodeRef, auto&& intersectNodeRecursive) -> void {
-        if (nodeRef.type == NodeRef::LEAF)
+        if (nodeRef.typeOrBegin == NodeRef::INTERNAL)
         {
-            intersectLeaf(nodeRef.index);
-        }
-        else
-        {
-            const auto& node = internalNodes[nodeRef.index];
+            const auto& node = internalNodes[nodeRef.indexOrEnd];
             for (const auto& [bound, child] : node.children)
             {
                 if (intersectBox(bound))
@@ -436,6 +434,10 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
                     intersectNodeRecursive(child, intersectNodeRecursive);
                 }
             }
+        }
+        else
+        {
+            intersectLeaf(nodeRef.typeOrBegin, nodeRef.indexOrEnd);
         }
     };
 
@@ -451,8 +453,7 @@ int BVHIntersectionProxy::compare(const Object& rhs_object) const
 
     const auto& rhs = static_cast<decltype(*this)>(rhs_object);
     // computation of BVH should be deterministic, so if the input is the same and it's actually been computed, we shouldn't need to scan all the nodes
-    if ((result = compare_value(boundingVolumeHeirarchy.type, rhs.boundingVolumeHeirarchy.type)) != 0) return result;
-    return compare_value(boundingVolumeHeirarchy.index, boundingVolumeHeirarchy.index);
+    return compare_value(bounds.valid(), rhs.bounds.valid());
 }
 
 void BVHIntersectionProxy::read(Input& input)
