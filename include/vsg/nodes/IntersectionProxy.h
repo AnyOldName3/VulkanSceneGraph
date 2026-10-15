@@ -64,6 +64,7 @@ namespace vsg
     class VSG_DECLSPEC BVHIntersectionProxy : public Inherit<IntersectionProxy, BVHIntersectionProxy>
     {
     public:
+        BVHIntersectionProxy();
         BVHIntersectionProxy(Node* in_original);
         BVHIntersectionProxy(const BVHIntersectionProxy& rhs, const CopyOp& copyop = {});
 
@@ -121,6 +122,7 @@ namespace vsg
     class VSG_DECLSPEC BypassIntersectionProxy : public Inherit<IntersectionProxy, BypassIntersectionProxy>
     {
     public:
+        BypassIntersectionProxy();
         BypassIntersectionProxy(Node* in_original, Node* in_target);
         BypassIntersectionProxy(const BypassIntersectionProxy& rhs, const CopyOp& copyop = {});
 
@@ -151,6 +153,7 @@ namespace vsg
             std::vector<ref_ptr<const Node>> nodePath;
         };
 
+        MultiBypassIntersectionProxy();
         MultiBypassIntersectionProxy(Node* in_original, std::vector<Target>&& in_targets = {});
         MultiBypassIntersectionProxy(const MultiBypassIntersectionProxy& rhs, const CopyOp& copyop = {});
 

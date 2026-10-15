@@ -73,6 +73,7 @@ void IntersectionProxy::read(Input& input)
     Node::read(input);
 
     input.read("original", original);
+    input.readObjects("proxiedNodePath", proxiedNodePath);
 }
 
 void IntersectionProxy::write(Output& output) const
@@ -80,6 +81,7 @@ void IntersectionProxy::write(Output& output) const
     Node::write(output);
 
     output.write("original", original);
+    output.writeObjects("proxiedNodePath", proxiedNodePath);
 }
 
 namespace
@@ -121,6 +123,14 @@ namespace
             return uint_indices->at(index);
         }
     };
+}
+
+BVHIntersectionProxy::BVHIntersectionProxy() :
+    Inherit(nullptr),
+    internalNodes(),
+    bounds(),
+    boundingVolumeHeirarchy(NodeRef{0u, 0u})
+{
 }
 
 BVHIntersectionProxy::BVHIntersectionProxy(Node* in_original) :
@@ -344,7 +354,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
 
 bool BVHIntersectionProxy::valid() const
 {
-    return bounds.valid();
+    return original != nullptr && bounds.valid();
 }
 
 void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentIntersector) const
@@ -460,14 +470,65 @@ void BVHIntersectionProxy::read(Input& input)
 {
     IntersectionProxy::read(input);
 
-    // todo: deserialise BVH
+    uint32_t internalNodeCount;
+    input.read("internalNodes", internalNodeCount);
+    internalNodes.resize(internalNodeCount);
+    for (auto& internalNode : internalNodes)
+    {
+        input.read("children[0].bound", internalNode.children[0].first);
+        input.read("children[0].ref", internalNode.children[0].second.typeOrBegin, internalNode.children[0].second.indexOrEnd);
+        input.read("children[1].bound", internalNode.children[1].first);
+        input.read("children[1].ref", internalNode.children[1].second.typeOrBegin, internalNode.children[1].second.indexOrEnd);
+    }
+    uint32_t triangleCount;
+    input.read("triangles", triangleCount);
+    triangles.resize(triangleCount);
+    for (auto& triangle : triangles)
+    {
+        input.read("triangle", triangle.vertex0, triangle.edge1, triangle.edge2);
+    }
+    input.read("bounds", bounds);
+    input.read("boundingVolumeHeirarchy", boundingVolumeHeirarchy.typeOrBegin, boundingVolumeHeirarchy.indexOrEnd);
+    if (input.matchPropertyName("triangleMetadata"))
+    {
+        triangleMetadata.resize(triangleCount);
+        for (auto& metadatum : triangleMetadata)
+        {
+            input.read("metadatum", metadatum.index0, metadatum.index1, metadatum.index2, metadatum.instance);
+        }
+    }
 }
 
 void BVHIntersectionProxy::write(Output& output) const
 {
     IntersectionProxy::write(output);
 
-    // todo: serialise BVH
+    output.write("internalNodes", static_cast<uint32_t>(internalNodes.size()));
+    for (const auto& internalNode : internalNodes)
+    {
+        output.write("children[0].bound", internalNode.children[0].first);
+        output.write("children[0].ref", internalNode.children[0].second.typeOrBegin, internalNode.children[0].second.indexOrEnd);
+        output.write("children[1].bound", internalNode.children[1].first);
+        output.write("children[1].ref", internalNode.children[1].second.typeOrBegin, internalNode.children[1].second.indexOrEnd);
+    }
+    output.write("triangles", static_cast<uint32_t>(triangles.size()));
+    for (const auto& triangle : triangles)
+    {
+        output.write("triangle", triangle.vertex0, triangle.edge1, triangle.edge2);
+    }
+    output.write("bounds", bounds);
+    output.write("boundingVolumeHeirarchy", boundingVolumeHeirarchy.typeOrBegin, boundingVolumeHeirarchy.indexOrEnd);
+    output.writePropertyName("triangleMetadata");
+    for (const auto& metadatum : triangleMetadata)
+    {
+        output.write("metadatum", metadatum.index0, metadatum.index1, metadatum.index2, metadatum.instance);
+    }
+}
+
+BypassIntersectionProxy::BypassIntersectionProxy() :
+    Inherit(nullptr),
+    target(nullptr)
+{
 }
 
 BypassIntersectionProxy::BypassIntersectionProxy(Node* in_original, Node* in_target) :
@@ -484,7 +545,7 @@ BypassIntersectionProxy::BypassIntersectionProxy(const BypassIntersectionProxy& 
 
 bool BypassIntersectionProxy::valid() const
 {
-    return target != nullptr;
+    return original != nullptr && target != nullptr;
 }
 
 void BypassIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentIntersector) const
@@ -518,6 +579,12 @@ void BypassIntersectionProxy::write(Output& output) const
     output.write("target", target);
 }
 
+MultiBypassIntersectionProxy::MultiBypassIntersectionProxy() :
+    Inherit(nullptr),
+    targets()
+{
+}
+
 MultiBypassIntersectionProxy::MultiBypassIntersectionProxy(Node* in_original, std::vector<Target>&& in_targets) :
     Inherit(in_original),
     targets(std::move(in_targets))
@@ -532,6 +599,7 @@ MultiBypassIntersectionProxy::MultiBypassIntersectionProxy(const MultiBypassInte
 
 bool MultiBypassIntersectionProxy::valid() const
 {
+    if (original == nullptr) return false;
     if (targets.empty()) return false;
     for (const auto& target : targets)
     {

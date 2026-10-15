@@ -352,6 +352,9 @@ ObjectFactory::ObjectFactory()
     add<vsg::DisplacementMapArrayState>();
     add<vsg::SharedObjects>();
     add<vsg::ProfileLog>();
+    add<vsg::BVHIntersectionProxy>();
+    add<vsg::BypassIntersectionProxy>();
+    add<vsg::MultiBypassIntersectionProxy>();
 
     // application
     add<vsg::EllipsoidModel>();
