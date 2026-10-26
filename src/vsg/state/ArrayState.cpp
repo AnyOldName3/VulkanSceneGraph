@@ -71,6 +71,23 @@ void ArrayState::_attemptDelete() const
     deleteDispatcher.attemptDelete(this);
 }
 
+int ArrayState::compare(const Object& rhs_object) const
+{
+    int result = BaseClass::compare(rhs_object);
+    if (result != 0) return result;
+
+    const auto& rhs = static_cast<decltype(*this)>(rhs_object);
+    if ((result = compare_value(topology, rhs.topology)) != 0) return result;
+    if ((result = compare_value(vertex_attribute_location, rhs.vertex_attribute_location)) != 0) return result;
+    if ((result = compare_memory(vertexAttribute, rhs.vertexAttribute)) != 0) return result;
+    if ((result = compare_pointer(vertices, rhs.vertices)) != 0) return result;
+    if ((result = compare_pointer_container(arrays, rhs.arrays)) != 0) return result;
+
+    // subclasses can mostly get away with the memcmp-based implementation in Inherit
+
+    return 0;
+}
+
 ref_ptr<const vec3Array> ArrayState::vertexArray(uint32_t /*instanceIndex*/, const std::vector<dmat4>& /*localToWorldStack*/, const std::vector<dmat4>& /*worldToLocalStack*/)
 {
     return vertices;
@@ -372,6 +389,24 @@ DisplacementMapArrayState::DisplacementMapArrayState(const DisplacementMapArrayS
 DisplacementMapArrayState::DisplacementMapArrayState(const ArrayState& rhs, const allocator_type& allocator) :
     Inherit(rhs, allocator)
 {
+}
+
+int DisplacementMapArrayState::compare(const Object& rhs_object) const
+{
+    int result = BaseClass::compare(rhs_object);
+    if (result != 0) return result;
+
+    const auto& rhs = static_cast<decltype(*this)>(rhs_object);
+    if ((result = compare_value(normal_attribute_location, rhs.normal_attribute_location)) != 0) return result;
+    if ((result = compare_value(texcoord_attribute_location, rhs.texcoord_attribute_location)) != 0) return result;
+    if ((result = compare_value(dm_set, rhs.dm_set)) != 0) return result;
+    if ((result = compare_value(dm_binding, rhs.dm_binding)) != 0) return result;
+    if ((result = compare_pointer(displacementMap, rhs.displacementMap)) != 0) return result;
+    if ((result = compare_pointer(sampler, rhs.sampler)) != 0) return result;
+    if ((result = compare_memory(normalAttribute, rhs.normalAttribute)) != 0) return result;
+    if ((result = compare_memory(texcoordAttribute, rhs.texcoordAttribute)) != 0) return result;
+
+    return 0;
 }
 
 void DisplacementMapArrayState::apply(const DescriptorImage& di)

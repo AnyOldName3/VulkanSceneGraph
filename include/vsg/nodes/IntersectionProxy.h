@@ -28,6 +28,7 @@ namespace vsg
 
         virtual bool valid() const = 0;
         virtual void intersect(LineSegmentIntersector& lineSegmentIntersector) const = 0;
+        virtual ref_ptr<const ArrayState> requiredArrayState() const { return nullptr; }
 
     public:
         int compare(const Object& rhs) const override;
@@ -65,14 +66,16 @@ namespace vsg
     {
     public:
         BVHIntersectionProxy();
-        BVHIntersectionProxy(Node* in_original);
+        BVHIntersectionProxy(Node* in_original, ArrayState* in_arrayState);
         BVHIntersectionProxy(const BVHIntersectionProxy& rhs, const CopyOp& copyop = {});
 
-        void rebuild(ArrayState& arrayState, uint32_t minLeafSize);
+        void rebuild(uint32_t minLeafSize);
 
         bool valid() const override;
 
         void intersect(LineSegmentIntersector& lineSegmentIntersector) const override;
+
+        ref_ptr<const ArrayState> requiredArrayState() const override { return arrayState; }
 
     public:
         ref_ptr<Object> clone(const CopyOp& copyop = {}) const override { return BVHIntersectionProxy::create(*this, copyop); }
@@ -115,6 +118,8 @@ namespace vsg
         };
 
         std::vector<TriangleMetadata, allocator_affinity_data<TriangleMetadata>> triangleMetadata;
+
+        ref_ptr<ArrayState> arrayState;
     };
     VSG_type_name(vsg::BVHIntersectionProxy);
 
@@ -174,6 +179,10 @@ namespace vsg
     };
     VSG_type_name(vsg::MultiBypassIntersectionProxy);
 
+    /** Visitor to optimise a subgraph for intersection queries
+    * Requires that any node accessible via multiple paths is the same shape wherever it's accessed via the same pointer
+    * A warning will be printed when that precondition is not met
+    */
     class VSG_DECLSPEC IntersectionOptimizeVisitor : public Inherit<ReplacementVisitor, IntersectionOptimizeVisitor>
     {
     public:
@@ -217,6 +226,7 @@ namespace vsg
         NodePath nodePath;
         std::map<const Node*, std::vector<IntersectableDescendant>> intersectableDescendants;
         std::unique_ptr<BypassCostEstimator> bypassCostEstimator;
+        uint32_t checkOnly;
     };
     VSG_type_name(vsg::IntersectionOptimizeVisitor);
 } // namespace vsg

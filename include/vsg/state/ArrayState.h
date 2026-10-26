@@ -119,6 +119,8 @@ namespace vsg
 
         DeleteDispatcher deleteDispatcher;
 
+        int compare(const Object& rhs) const override;
+
         bool getAttributeDetails(const VertexInputState& vas, uint32_t location, AttributeDetails& attributeDetails);
 
         using ConstVisitor::apply;
@@ -228,6 +230,8 @@ namespace vsg
         ref_ptr<Sampler> sampler;
         AttributeDetails normalAttribute;
         AttributeDetails texcoordAttribute;
+
+        int compare(const Object& rhs) const override;
 
         using ArrayState::apply;
 

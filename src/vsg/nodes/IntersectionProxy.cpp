@@ -129,27 +129,33 @@ BVHIntersectionProxy::BVHIntersectionProxy() :
     Inherit(nullptr),
     internalNodes(),
     bounds(),
-    boundingVolumeHeirarchy(NodeRef{0u, 0u})
+    boundingVolumeHeirarchy(NodeRef{0u, 0u}),
+    arrayState(nullptr)
 {
 }
 
-BVHIntersectionProxy::BVHIntersectionProxy(Node* in_original) :
+BVHIntersectionProxy::BVHIntersectionProxy(Node* in_original, ArrayState* in_arrayState) :
     Inherit(in_original),
     internalNodes(),
     bounds(),
-    boundingVolumeHeirarchy(NodeRef{0u, 0u})
+    boundingVolumeHeirarchy(NodeRef{0u, 0u}),
+    arrayState(in_arrayState->cloneArrayState())
 {
+    original->accept(*arrayState);
 }
 
 BVHIntersectionProxy::BVHIntersectionProxy(const BVHIntersectionProxy& rhs, const CopyOp& copyop) :
     Inherit(rhs, copyop),
     internalNodes(rhs.internalNodes),
+    triangles(rhs.triangles),
     bounds(rhs.bounds),
-    boundingVolumeHeirarchy(rhs.boundingVolumeHeirarchy)
+    boundingVolumeHeirarchy(rhs.boundingVolumeHeirarchy),
+    triangleMetadata(rhs.triangleMetadata),
+    arrayState(rhs.arrayState)
 {
 }
 
-void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t minLeafSize)
+void vsg::BVHIntersectionProxy::rebuild(uint32_t minLeafSize)
 {
     internalNodes.clear();
     bounds.reset();
@@ -166,8 +172,6 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
 
     if (auto* vertexDraw = ::cast<VertexDraw>(original))
     {
-        arrayState.apply(*vertexDraw);
-
         uint32_t lastIndex = vertexDraw->instanceCount > 1 ? (vertexDraw->firstInstance + vertexDraw->instanceCount) : vertexDraw->firstInstance + 1;
         uint32_t endVertex = vertexDraw->firstVertex + vertexDraw->vertexCount;
 
@@ -176,7 +180,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
 
         for (uint32_t instanceIndex = vertexDraw->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
-            if (auto vertices = arrayState.vertexArray(instanceIndex, {}, {}))
+            if (auto vertices = arrayState->vertexArray(instanceIndex, {}, {}))
             {
                 for (uint32_t i = vertexDraw->firstVertex; (i + 2) < endVertex; i += 3)
                 {
@@ -192,8 +196,6 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
     }
     else if (auto* vertexIndexDraw = ::cast<VertexIndexDraw>(original))
     {
-        arrayState.apply(*vertexIndexDraw);
-
         uint32_t lastIndex = vertexIndexDraw->instanceCount > 1 ? (vertexIndexDraw->firstInstance + vertexIndexDraw->instanceCount) : vertexIndexDraw->firstInstance + 1;
         uint32_t endIndex = vertexIndexDraw->firstIndex + ((vertexIndexDraw->indexCount + 2) / 3) * 3;
 
@@ -211,7 +213,7 @@ void vsg::BVHIntersectionProxy::rebuild(vsg::ArrayState& arrayState, uint32_t mi
 
         for (uint32_t instanceIndex = vertexIndexDraw->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
-            if (auto vertices = arrayState.vertexArray(instanceIndex, {}, {}))
+            if (auto vertices = arrayState->vertexArray(instanceIndex, {}, {}))
             {
                 for (uint32_t i = vertexIndexDraw->firstIndex; i < endIndex; i += 3)
                 {
@@ -497,6 +499,7 @@ void BVHIntersectionProxy::read(Input& input)
             input.read("metadatum", metadatum.index0, metadatum.index1, metadatum.index2, metadatum.instance);
         }
     }
+    input.readObject("arrayState", arrayState);
 }
 
 void BVHIntersectionProxy::write(Output& output) const
@@ -523,6 +526,7 @@ void BVHIntersectionProxy::write(Output& output) const
     {
         output.write("metadatum", metadatum.index0, metadatum.index1, metadatum.index2, metadatum.instance);
     }
+    output.writeObject("arrayState", arrayState);
 }
 
 BypassIntersectionProxy::BypassIntersectionProxy() :
@@ -739,7 +743,8 @@ namespace
 }
 
 IntersectionOptimizeVisitor::IntersectionOptimizeVisitor(ref_ptr<ArrayState> initialArrayState, std::unique_ptr<BypassCostEstimator>&& in_bypassCostEstimator):
-    bypassCostEstimator(std::move(in_bypassCostEstimator))
+    bypassCostEstimator(std::move(in_bypassCostEstimator)),
+    checkOnly(0)
 {
     arrayStateStack.reserve(4);
     arrayStateStack.emplace_back(initialArrayState ? initialArrayState : ArrayState::create());
@@ -752,6 +757,10 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Node& node)
     node.traverse(*this);
 
     nodePath.pop_back();
+
+    // cleanup shouldn't be necessary as checkOnly can't be set for the subgraph root
+    if (checkOnly)
+        return std::nullopt;
 
     NoBypassDetector nodeNbd;
     node.accept(nodeNbd);
@@ -827,8 +836,8 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(StateGroup& st
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& vertexDraw)
 {
-    auto optimized = BVHIntersectionProxy::create(&vertexDraw);
-    optimized->rebuild(*arrayStateStack.back(), minLeafSize);
+    auto optimized = BVHIntersectionProxy::create(&vertexDraw, arrayStateStack.back());
+    optimized->rebuild(minLeafSize);
 
     if (!nodePath.empty())
     {
@@ -839,8 +848,8 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& ve
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDraw& vertexIndexDraw)
 {
-    auto optimized = BVHIntersectionProxy::create(&vertexIndexDraw);
-    optimized->rebuild(*arrayStateStack.back(), minLeafSize);
+    auto optimized = BVHIntersectionProxy::create(&vertexIndexDraw, arrayStateStack.back());
+    optimized->rebuild(minLeafSize);
 
     if (!nodePath.empty())
     {
@@ -851,6 +860,23 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDra
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(IntersectionProxy& intersectionProxy)
 {
+    if (auto arrayState = intersectionProxy.requiredArrayState())
+    {
+        // if the same proxy is reachable by multiple paths, it might be different shapes,
+        // e.g. if the same mesh is used with multiple displacement maps.
+        intersectionProxy.original->accept(*arrayStateStack.back());
+        if (arrayState->compare(*arrayStateStack.back()) != 0)
+        {
+            vsg::warn("IntersectionOptimizeVisitor encountered node ", intersectionProxy.original, " reused with incompatible ArrayState. Intersection results may be innacurate.");
+        }
+    }
+    else
+    {
+        // retraverse to double-check compatibility
+        ++checkOnly;
+        intersectionProxy.original->accept(*this);
+        --checkOnly;
+    }
     if (!nodePath.empty())
     {
         intersectableDescendants[nodePath.back()].push_back({&intersectionProxy, {}});
