@@ -926,6 +926,8 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDra
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Commands& commands)
 {
     // IntersectionProxy is not a subclass of Command, so cannot be installed as a child of a Commands instance
+    nodePath.push_back(&commands);
+
     std::vector<ref_ptr<Node>> replacements;
     for (ref_ptr<Command>& command : commands.children)
     {
@@ -933,17 +935,26 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Commands& comm
         if (replacement.has_value() && replacement.value() && replacement.value()->is_compatible(typeid(Node)))
             replacements.emplace_back(static_cast<Node*>(replacement.value().get()));
     }
+
+    nodePath.pop_back();
+
     if (replacements.empty())
         return std::nullopt;
     else if (replacements.size() == 1)
-        return BypassIntersectionProxy::create(&commands, replacements.front());
+    {
+        auto bip = BypassIntersectionProxy::create(&commands, replacements.front());
+        intersectableDescendants[nodePath.back()].push_back({bip, {}});
+        return bip;
+    }
     else
     {
         std::vector<MultiBypassIntersectionProxy::Target> targets;
         targets.reserve(replacements.size());
         for (auto& replacement : replacements)
             targets.push_back({std::move(replacement), {}});
-        return MultiBypassIntersectionProxy::create(&commands, std::move(targets));
+        auto mbip = MultiBypassIntersectionProxy::create(&commands, std::move(targets));
+        intersectableDescendants[nodePath.back()].push_back({mbip, {}});
+        return mbip;
     }
 }
 
