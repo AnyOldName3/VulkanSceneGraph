@@ -11,6 +11,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/commands/BindIndexBuffer.h>
+#include <vsg/commands/Commands.h>
+#include <vsg/commands/Draw.h>
+#include <vsg/commands/DrawIndexed.h>
 #include <vsg/io/Logger.h>
 #include <vsg/io/ReaderWriter.h>
 #include <vsg/nodes/IntersectionProxy.h>
@@ -216,6 +219,62 @@ void vsg::BVHIntersectionProxy::rebuild(uint32_t minLeafSize)
             if (auto vertices = arrayState->vertexArray(instanceIndex, {}, {}))
             {
                 for (uint32_t i = vertexIndexDraw->firstIndex; i < endIndex; i += 3)
+                {
+                    inputTriangles.emplace_back(Triangle{
+                        vertices->at(indices[i]),
+                        vertices->at(indices[i + 1]) - vertices->at(indices[i]),
+                        vertices->at(indices[i + 2]) - vertices->at(indices[i])});
+                    metadata.emplace_back(TriangleMetadata{indices[i], indices[i + 1], indices[i + 2], instanceIndex});
+                }
+            }
+        }
+    }
+    else if (auto* draw = ::cast<Draw>(original))
+    {
+        uint32_t lastIndex = draw->instanceCount > 1 ? (draw->firstInstance + draw->instanceCount) : draw->firstInstance + 1;
+        uint32_t endVertex = draw->firstVertex + draw->vertexCount;
+
+        inputTriangles.reserve(draw->instanceCount * draw->vertexCount / 3);
+        metadata.reserve(inputTriangles.size());
+
+        for (uint32_t instanceIndex = draw->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
+        {
+            if (auto vertices = arrayState->vertexArray(instanceIndex, {}, {}))
+            {
+                for (uint32_t i = draw->firstVertex; (i + 2) < endVertex; i += 3)
+                {
+                    inputTriangles.emplace_back(Triangle{
+                        vertices->at(i),
+                        vertices->at(i + 1) - vertices->at(i),
+                        vertices->at(i + 2) - vertices->at(i)});
+                    metadata.emplace_back(TriangleMetadata{i, i + 1, i + 2, instanceIndex});
+                }
+            }
+        }
+    }
+    else if (auto* drawIndexed = ::cast<DrawIndexed>(original))
+    {
+        uint32_t lastIndex = drawIndexed->instanceCount > 1 ? (drawIndexed->firstInstance + drawIndexed->instanceCount) : drawIndexed->firstInstance + 1;
+        uint32_t endIndex = drawIndexed->firstIndex + ((drawIndexed->indexCount + 2) / 3) * 3;
+
+        inputTriangles.reserve(drawIndexed->instanceCount * drawIndexed->indexCount / 3);
+        metadata.reserve(inputTriangles.size());
+
+        // indices need to be the last ones seen by the IntersectionOptimizeVisitor, whether they're from a BindIndexBuffer or VertexIndexDraw
+        /*if (!drawIndexed->indices || !drawIndexed->indices->data)
+        {
+            warn("Attempting to build BVHIntersectionProxy for DrawIndexed with no indices.");
+            return;
+        }*/
+
+        GetIndicesVisitor indices;
+        //drawIndexed->indices->accept(indices);
+
+        for (uint32_t instanceIndex = drawIndexed->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
+        {
+            if (auto vertices = arrayState->vertexArray(instanceIndex, {}, {}))
+            {
+                for (uint32_t i = drawIndexed->firstIndex; i < endIndex; i += 3)
                 {
                     inputTriangles.emplace_back(Triangle{
                         vertices->at(indices[i]),
@@ -836,6 +895,9 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(StateGroup& st
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& vertexDraw)
 {
+    if (checkOnly)
+        return std::nullopt;
+
     auto optimized = BVHIntersectionProxy::create(&vertexDraw, arrayStateStack.back());
     optimized->rebuild(minLeafSize);
 
@@ -848,7 +910,70 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& ve
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDraw& vertexIndexDraw)
 {
+    if (checkOnly)
+        return std::nullopt;
+
     auto optimized = BVHIntersectionProxy::create(&vertexIndexDraw, arrayStateStack.back());
+    optimized->rebuild(minLeafSize);
+
+    if (!nodePath.empty())
+    {
+        intersectableDescendants[nodePath.back()].push_back({optimized, {}});
+    }
+    return optimized;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Commands& commands)
+{
+    // IntersectionProxy is not a subclass of Command, so cannot be installed as a child of a Commands instance
+    std::vector<ref_ptr<Node>> replacements;
+    for (ref_ptr<Command>& command : commands.children)
+    {
+        auto replacement = command->accept(*this);
+        if (replacement.has_value() && replacement.value() && replacement.value()->is_compatible(typeid(Node)))
+            replacements.emplace_back(static_cast<Node*>(replacement.value().get()));
+    }
+    if (replacements.empty())
+        return std::nullopt;
+    else if (replacements.size() == 1)
+        return BypassIntersectionProxy::create(&commands, replacements.front());
+    else
+    {
+        std::vector<MultiBypassIntersectionProxy::Target> targets;
+        targets.reserve(replacements.size());
+        for (auto& replacement : replacements)
+            targets.push_back({std::move(replacement), {}});
+        return MultiBypassIntersectionProxy::create(&commands, std::move(targets));
+    }
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(BindVertexBuffers& bvb)
+{
+    arrayStateStack.back()->apply(bvb);
+    return std::nullopt;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Draw& draw)
+{
+    if (checkOnly)
+        return std::nullopt;
+
+    auto optimized = BVHIntersectionProxy::create(&draw, arrayStateStack.back());
+    optimized->rebuild(minLeafSize);
+
+    if (!nodePath.empty())
+    {
+        intersectableDescendants[nodePath.back()].push_back({optimized, {}});
+    }
+    return optimized;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(DrawIndexed& drawIndexed)
+{
+    if (checkOnly)
+        return std::nullopt;
+
+    auto optimized = BVHIntersectionProxy::create(&drawIndexed, arrayStateStack.back());
     optimized->rebuild(minLeafSize);
 
     if (!nodePath.empty())
