@@ -468,7 +468,7 @@ void vsg::BVHIntersectionProxy::intersect(LineSegmentIntersector& lineSegmentInt
             {
                 arrays.assign(arrayState->arrays.begin(), arrayState->arrays.end());
             }
-            auto indexRatios = (featureMask & LineSegmentIntersector::INDEX_RATIOS) ? IndexRatios{{metadata.index0, r0}, {metadata.index1 + 1, r1}, {metadata.index2 + 2, r2}} : IndexRatios();
+            auto indexRatios = (featureMask & LineSegmentIntersector::INDEX_RATIOS) ? IndexRatios{{metadata.index0, r0}, {metadata.index1, r1}, {metadata.index2, r2}} : IndexRatios();
             lineSegmentIntersector.add(intersection, double(t2 * inv_det), std::move(indexRatios), metadata.instance, std::move(arrays));
         }
     };
