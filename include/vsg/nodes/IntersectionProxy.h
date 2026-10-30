@@ -225,6 +225,8 @@ namespace vsg
         std::optional<ref_ptr<Object>> apply(VertexDraw& vertexDraw) override;
         std::optional<ref_ptr<Object>> apply(VertexIndexDraw& vertexIndexDraw) override;
 
+        std::optional<ref_ptr<Object>> apply(Geometry& geometry) override;
+
         std::optional<ref_ptr<Object>> apply(Commands& commands) override;
 
         std::optional<ref_ptr<Object>> apply(BindVertexBuffers& bvb) override;

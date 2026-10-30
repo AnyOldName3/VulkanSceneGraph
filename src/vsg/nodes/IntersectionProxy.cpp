@@ -16,6 +16,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/commands/DrawIndexed.h>
 #include <vsg/io/Logger.h>
 #include <vsg/io/ReaderWriter.h>
+#include <vsg/nodes/Geometry.h>
 #include <vsg/nodes/IntersectionProxy.h>
 #include <vsg/nodes/StateGroup.h>
 #include <vsg/nodes/VertexDraw.h>
@@ -864,6 +865,43 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDra
         intersectableDescendants[nodePath.back()].push_back({optimized, {}});
     }
     return optimized;
+}
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Geometry& geometry)
+{
+    // IntersectionProxy is not a subclass of Command, so cannot be installed as a child of a Geometry instance
+    nodePath.push_back(&geometry);
+
+    arrayStateStack.back()->apply(geometry);
+    if (geometry.indices) geometry.indices->accept(*this);
+
+    std::vector<ref_ptr<Node>> replacements;
+    for (ref_ptr<Command>& command : geometry.commands)
+    {
+        auto replacement = command->accept(*this);
+        if (replacement.has_value() && replacement.value() && replacement.value()->is_compatible(typeid(Node)))
+            replacements.emplace_back(static_cast<Node*>(replacement.value().get()));
+    }
+
+    nodePath.pop_back();
+
+    if (replacements.empty())
+        return std::nullopt;
+    else if (replacements.size() == 1)
+    {
+        auto bip = BypassIntersectionProxy::create(&geometry, replacements.front());
+        intersectableDescendants[nodePath.back()].push_back({bip, {}});
+        return bip;
+    }
+    else
+    {
+        std::vector<MultiBypassIntersectionProxy::Target> targets;
+        targets.reserve(replacements.size());
+        for (auto& replacement : replacements)
+            targets.push_back({std::move(replacement), {}});
+        auto mbip = MultiBypassIntersectionProxy::create(&geometry, std::move(targets));
+        intersectableDescendants[nodePath.back()].push_back({mbip, {}});
+        return mbip;
+    }
 }
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Commands& commands)
