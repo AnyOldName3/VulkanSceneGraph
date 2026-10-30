@@ -15,6 +15,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/nodes/Node.h>
 #include <vsg/state/ArrayState.h>
 
+#include <variant>
+
 namespace vsg
 {
     class LineSegmentIntersector;
@@ -65,8 +67,10 @@ namespace vsg
     class VSG_DECLSPEC BVHIntersectionProxy : public Inherit<IntersectionProxy, BVHIntersectionProxy>
     {
     public:
+        using Indices = std::variant<ref_ptr<const ubyteArray>, ref_ptr<const ushortArray>, ref_ptr<const uintArray>>;
+
         BVHIntersectionProxy();
-        BVHIntersectionProxy(Node* in_original, ArrayState* in_arrayState);
+        BVHIntersectionProxy(Node* in_original, ArrayState* in_arrayState, const Indices& in_indices);
         BVHIntersectionProxy(const BVHIntersectionProxy& rhs, const CopyOp& copyop = {});
 
         void rebuild(uint32_t minLeafSize);
@@ -120,6 +124,7 @@ namespace vsg
         std::vector<TriangleMetadata, allocator_affinity_data<TriangleMetadata>> triangleMetadata;
 
         ref_ptr<ArrayState> arrayState;
+        Indices indices;
     };
     VSG_type_name(vsg::BVHIntersectionProxy);
 
@@ -188,6 +193,7 @@ namespace vsg
     public:
         using NodePath = std::vector<Node*>;
         using ArrayStateStack = std::vector<ref_ptr<ArrayState>>;
+        using Indices = std::variant<ref_ptr<const ubyteArray>, ref_ptr<const ushortArray>, ref_ptr<const uintArray>>;
         struct IntersectableDescendant
         {
             Node* node;
@@ -222,6 +228,11 @@ namespace vsg
         std::optional<ref_ptr<Object>> apply(Commands& commands) override;
 
         std::optional<ref_ptr<Object>> apply(BindVertexBuffers& bvb) override;
+        std::optional<ref_ptr<Object>> apply(BindIndexBuffer& bvb) override;
+        std::optional<ref_ptr<Object>> apply(BufferInfo& bvb) override;
+        std::optional<ref_ptr<Object>> apply(ubyteArray& bvb) override;
+        std::optional<ref_ptr<Object>> apply(ushortArray& bvb) override;
+        std::optional<ref_ptr<Object>> apply(uintArray& bvb) override;
 
         std::optional<ref_ptr<Object>> apply(Draw& draw) override;
         std::optional<ref_ptr<Object>> apply(DrawIndexed& drawIndexed) override;
@@ -231,6 +242,7 @@ namespace vsg
     protected:
         ArrayStateStack arrayStateStack;
         NodePath nodePath;
+        Indices indices;
         std::map<const Node*, std::vector<IntersectableDescendant>> intersectableDescendants;
         std::unique_ptr<BypassCostEstimator> bypassCostEstimator;
         uint32_t checkOnly;

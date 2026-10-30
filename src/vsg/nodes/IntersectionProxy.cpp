@@ -66,47 +66,6 @@ void IntersectionProxy::write(Output& output) const
     output.writeObjects("proxiedNodePath", proxiedNodePath);
 }
 
-namespace
-{
-    struct GetIndicesVisitor : public ConstVisitor
-    {
-        ref_ptr<const ubyteArray> ubyte_indices;
-        ref_ptr<const ushortArray> ushort_indices;
-        ref_ptr<const uintArray> uint_indices;
-
-        void apply(const BufferInfo& bufferInfo) override
-        {
-            bufferInfo.data->accept(*this);
-        }
-
-        void apply(const ubyteArray& array) override
-        {
-            ubyte_indices = &array;
-            ushort_indices = nullptr;
-            uint_indices = nullptr;
-        }
-        void apply(const ushortArray& array) override
-        {
-            ubyte_indices = nullptr;
-            ushort_indices = &array;
-            uint_indices = nullptr;
-        }
-        void apply(const uintArray& array) override
-        {
-            ubyte_indices = nullptr;
-            ushort_indices = nullptr;
-            uint_indices = &array;
-        }
-
-        uint32_t operator[](size_t index)
-        {
-            if (ubyte_indices) return ubyte_indices->at(index);
-            if (ushort_indices) return ushort_indices->at(index);
-            return uint_indices->at(index);
-        }
-    };
-}
-
 BVHIntersectionProxy::BVHIntersectionProxy() :
     Inherit(nullptr),
     internalNodes(),
@@ -116,12 +75,13 @@ BVHIntersectionProxy::BVHIntersectionProxy() :
 {
 }
 
-BVHIntersectionProxy::BVHIntersectionProxy(Node* in_original, ArrayState* in_arrayState) :
+BVHIntersectionProxy::BVHIntersectionProxy(Node* in_original, ArrayState* in_arrayState, const Indices& in_indices) :
     Inherit(in_original),
     internalNodes(),
     bounds(),
     boundingVolumeHeirarchy(NodeRef{0u, 0u}),
-    arrayState(in_arrayState->cloneArrayState())
+    arrayState(in_arrayState->cloneArrayState()),
+    indices(in_indices)
 {
     original->accept(*arrayState);
 }
@@ -133,7 +93,8 @@ BVHIntersectionProxy::BVHIntersectionProxy(const BVHIntersectionProxy& rhs, cons
     bounds(rhs.bounds),
     boundingVolumeHeirarchy(rhs.boundingVolumeHeirarchy),
     triangleMetadata(rhs.triangleMetadata),
-    arrayState(rhs.arrayState)
+    arrayState(rhs.arrayState),
+    indices(rhs.indices)
 {
 }
 
@@ -184,14 +145,9 @@ void vsg::BVHIntersectionProxy::rebuild(uint32_t minLeafSize)
         inputTriangles.reserve(vertexIndexDraw->instanceCount * vertexIndexDraw->indexCount / 3);
         metadata.reserve(inputTriangles.size());
 
-        if (!vertexIndexDraw->indices || !vertexIndexDraw->indices->data)
-        {
-            warn("Attempting to build BVHIntersectionProxy for VertexIndexDraw with no indices.");
-            return;
-        }
-
-        GetIndicesVisitor indices;
-        vertexIndexDraw->indices->accept(indices);
+        auto getIndex = [&](uint32_t i) -> uint32_t {
+            return std::visit([=](auto&& arrayPtr) { return uint32_t((*arrayPtr)[i]); }, indices);
+        };
 
         for (uint32_t instanceIndex = vertexIndexDraw->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
@@ -200,10 +156,10 @@ void vsg::BVHIntersectionProxy::rebuild(uint32_t minLeafSize)
                 for (uint32_t i = vertexIndexDraw->firstIndex; i < endIndex; i += 3)
                 {
                     inputTriangles.emplace_back(Triangle{
-                        vertices->at(indices[i]),
-                        vertices->at(indices[i + 1]) - vertices->at(indices[i]),
-                        vertices->at(indices[i + 2]) - vertices->at(indices[i])});
-                    metadata.emplace_back(TriangleMetadata{indices[i], indices[i + 1], indices[i + 2], instanceIndex});
+                        vertices->at(getIndex(i)),
+                        vertices->at(getIndex(i + 1)) - vertices->at(getIndex(i)),
+                        vertices->at(getIndex(i + 2)) - vertices->at(getIndex(i))});
+                    metadata.emplace_back(TriangleMetadata{getIndex(i), getIndex(i + 1), getIndex(i + 2), instanceIndex});
                 }
             }
         }
@@ -239,15 +195,9 @@ void vsg::BVHIntersectionProxy::rebuild(uint32_t minLeafSize)
         inputTriangles.reserve(drawIndexed->instanceCount * drawIndexed->indexCount / 3);
         metadata.reserve(inputTriangles.size());
 
-        // indices need to be the last ones seen by the IntersectionOptimizeVisitor, whether they're from a BindIndexBuffer or VertexIndexDraw
-        /*if (!drawIndexed->indices || !drawIndexed->indices->data)
-        {
-            warn("Attempting to build BVHIntersectionProxy for DrawIndexed with no indices.");
-            return;
-        }*/
-
-        GetIndicesVisitor indices;
-        //drawIndexed->indices->accept(indices);
+        auto getIndex = [&](uint32_t i) -> uint32_t {
+            return std::visit([=](auto&& arrayPtr) { return uint32_t((*arrayPtr)[i]); }, indices);
+        };
 
         for (uint32_t instanceIndex = drawIndexed->firstInstance; instanceIndex < lastIndex; ++instanceIndex)
         {
@@ -256,10 +206,10 @@ void vsg::BVHIntersectionProxy::rebuild(uint32_t minLeafSize)
                 for (uint32_t i = drawIndexed->firstIndex; i < endIndex; i += 3)
                 {
                     inputTriangles.emplace_back(Triangle{
-                        vertices->at(indices[i]),
-                        vertices->at(indices[i + 1]) - vertices->at(indices[i]),
-                        vertices->at(indices[i + 2]) - vertices->at(indices[i])});
-                    metadata.emplace_back(TriangleMetadata{indices[i], indices[i + 1], indices[i + 2], instanceIndex});
+                        vertices->at(getIndex(i)),
+                        vertices->at(getIndex(i + 1)) - vertices->at(getIndex(i)),
+                        vertices->at(getIndex(i + 2)) - vertices->at(getIndex(i))});
+                    metadata.emplace_back(TriangleMetadata{getIndex(i), getIndex(i + 1), getIndex(i + 2), instanceIndex});
                 }
             }
         }
@@ -538,6 +488,16 @@ void BVHIntersectionProxy::read(Input& input)
         }
     }
     input.readObject("arrayState", arrayState);
+    ref_ptr<const Object> inIndices;
+    input.readObject("indices", inIndices);
+    if (!inIndices)
+        indices = {};
+    else if (inIndices->is_compatible(typeid(ubyteArray)))
+        indices = ref_ptr(static_cast<const ubyteArray*>(inIndices.get()));
+    else if (inIndices->is_compatible(typeid(ushortArray)))
+        indices = ref_ptr(static_cast<const ushortArray*>(inIndices.get()));
+    else if (inIndices->is_compatible(typeid(uintArray)))
+        indices = ref_ptr(static_cast<const uintArray*>(inIndices.get()));
 }
 
 void BVHIntersectionProxy::write(Output& output) const
@@ -565,6 +525,7 @@ void BVHIntersectionProxy::write(Output& output) const
         output.write("metadatum", metadatum.index0, metadatum.index1, metadatum.index2, metadatum.instance);
     }
     output.writeObject("arrayState", arrayState);
+    std::visit([&](auto&& arrayPtr) { output.writeObject("indices", arrayPtr); }, indices);
 }
 
 BypassIntersectionProxy::BypassIntersectionProxy() :
@@ -847,6 +808,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Node& node)
 
         // We're finished with this scenegraph, get the visitor ready to process the next one
         intersectableDescendants.clear();
+        indices = {};
 
         return proxy;
     }
@@ -877,7 +839,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& ve
     if (checkOnly)
         return std::nullopt;
 
-    auto optimized = BVHIntersectionProxy::create(&vertexDraw, arrayStateStack.back());
+    auto optimized = BVHIntersectionProxy::create(&vertexDraw, arrayStateStack.back(), Indices{});
     optimized->rebuild(minLeafSize);
 
     if (!nodePath.empty())
@@ -889,10 +851,12 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexDraw& ve
 
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(VertexIndexDraw& vertexIndexDraw)
 {
+    if (vertexIndexDraw.indices) vertexIndexDraw.indices->accept(*this);
+
     if (checkOnly)
         return std::nullopt;
 
-    auto optimized = BVHIntersectionProxy::create(&vertexIndexDraw, arrayStateStack.back());
+    auto optimized = BVHIntersectionProxy::create(&vertexIndexDraw, arrayStateStack.back(), indices);
     optimized->rebuild(minLeafSize);
 
     if (!nodePath.empty())
@@ -943,12 +907,42 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(BindVertexBuff
     return std::nullopt;
 }
 
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(BindIndexBuffer& bib)
+{
+    bib.indices->accept(*this);
+    return std::nullopt;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(BufferInfo& bufferInfo)
+{
+    bufferInfo.data->accept(*this);
+    return std::nullopt;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(ubyteArray& array)
+{
+    indices = ref_ptr<const ubyteArray>(&array);
+    return std::nullopt;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(ushortArray& array)
+{
+    indices = ref_ptr<const ushortArray>(&array);
+    return std::nullopt;
+}
+
+std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(uintArray& array)
+{
+    indices = ref_ptr<const uintArray>(&array);
+    return std::nullopt;
+}
+
 std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(Draw& draw)
 {
     if (checkOnly)
         return std::nullopt;
 
-    auto optimized = BVHIntersectionProxy::create(&draw, arrayStateStack.back());
+    auto optimized = BVHIntersectionProxy::create(&draw, arrayStateStack.back(), Indices{});
     optimized->rebuild(minLeafSize);
 
     if (!nodePath.empty())
@@ -963,7 +957,7 @@ std::optional<ref_ptr<Object>> IntersectionOptimizeVisitor::apply(DrawIndexed& d
     if (checkOnly)
         return std::nullopt;
 
-    auto optimized = BVHIntersectionProxy::create(&drawIndexed, arrayStateStack.back());
+    auto optimized = BVHIntersectionProxy::create(&drawIndexed, arrayStateStack.back(), indices);
     optimized->rebuild(minLeafSize);
 
     if (!nodePath.empty())
